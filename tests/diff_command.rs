@@ -1,6 +1,8 @@
-use git2::{Commit, Oid};
+use git2::Commit;
+use indoc::indoc;
 use stackable_commits::commands::diff;
 
+use pretty_assertions::assert_eq;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::os::unix::ffi::OsStrExt;
@@ -27,7 +29,20 @@ fn basic_test() {
     diff::diff::<&str, _>(None, current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
-    assert!(!remote_head.stdout.is_empty())
+    assert!(!remote_head.stdout.is_empty());
+
+    let output = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
+        .expect("Output of diff is not valid UTF-8");
+    let expected_diff = indoc! {"
+        diff --git a/File1 b/File1
+        index e8151f3..cd08755 100644
+        --- a/File1
+        +++ b/File1
+        @@ -1,2 +1 @@
+         Hello world!
+        -Another Hello, World!
+    "};
+    assert_eq!(output, expected_diff);
 }
 
 #[test]
@@ -53,7 +68,20 @@ fn test_diff_from_not_head_commit() {
     diff::diff::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
-    assert!(!remote_head.stdout.is_empty())
+    assert!(!remote_head.stdout.is_empty());
+
+    let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
+        .expect("Output of diff is not valid UTF-8");
+    let expected_diff = indoc! {"
+        diff --git a/File1 b/File1
+        index e8151f3..cd08755 100644
+        --- a/File1
+        +++ b/File1
+        @@ -1,2 +1 @@
+         Hello world!
+        -Another Hello, World!
+    "};
+    assert_eq!(actual_diff, expected_diff);
 }
 
 struct TestRepoWithRemote {
@@ -153,6 +181,17 @@ impl TestRepoWithRemote {
             .arg("--heads")
             .arg("origin")
             .arg(name)
+            .output()
+            .unwrap()
+    }
+
+    fn diff(&self, ref1: &str, ref2: &str) -> Output {
+        let current_dir = self.local_repo_dir.path();
+        Command::new("git")
+            .current_dir(current_dir)
+            .arg("diff")
+            .arg(ref1)
+            .arg(ref2)
             .output()
             .unwrap()
     }
