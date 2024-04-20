@@ -12,7 +12,7 @@ struct Cli {
 enum Commands {
     Diff { commit_ref: Option<String> },
 }
-const REPO_DIR: &'static str = "/Users/mbergenlid/Development/fun/stackable-prs-demo";
+const REPO_DIR: &str = "/Users/mbergenlid/Development/fun/stackable-prs-demo";
 
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();

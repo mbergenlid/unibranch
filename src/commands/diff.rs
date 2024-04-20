@@ -30,7 +30,7 @@ where
     let commit = git_repo.find_unpushed_commit_by_id(commit_oid)?;
     let msg = commit.message().unwrap_or("No commit message");
     let title = msg.lines().next().expect("Must have at least one line");
-    let branch_name = title.replace(" ", "-").to_ascii_lowercase();
+    let branch_name = title.replace(' ', "-").to_ascii_lowercase();
 
     let base = git_repo.base_commit_id;
 
