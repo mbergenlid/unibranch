@@ -1,7 +1,7 @@
 use std::{ffi::CString, path::Path};
 
 use anyhow::{Context, Ok};
-use git2::{Commit, Oid, Repository};
+use git2::{Commit, Index, Oid, Repository};
 
 pub struct GitRepo {
     repo: git2::Repository,
@@ -24,6 +24,10 @@ impl GitRepo {
         })
     }
 
+    pub fn base_commit(&self) -> anyhow::Result<Commit> {
+        Ok(self.repo.find_commit(self.base_commit_id)?)
+    }
+
     pub fn find_unpushed_commit_by_id(&self, id: Oid) -> anyhow::Result<Commit> {
         let commit: git2::Oid = self
             .unpushed_commits()?
@@ -43,14 +47,40 @@ impl GitRepo {
         Ok(walk.collect::<Result<Vec<_>, _>>()?)
     }
 
-    pub fn cherry_pick_commit(&self, commit: Commit) -> anyhow::Result<Oid> {
+    pub fn cherry_pick_commit(
+        &self,
+        commit: Commit,
+        pr_head: Option<Commit>,
+    ) -> anyhow::Result<Commit> {
         //Need to cherry-pick the commit on top off master
-        let mut index = self.repo.cherrypick_commit(
+        let index = self.repo.cherrypick_commit(
             &commit,
             &self.repo.find_commit(self.base_commit_id)?,
             0,
             None,
         )?;
+
+        let base_commit = pr_head.unwrap_or_else(|| {
+            self.repo
+                .find_commit(self.base_commit_id)
+                .expect("No commit for base commit id")
+        });
+        let diff = self
+            .repo
+            .diff_tree_to_index(Some(&base_commit.tree()?), Some(&index), None)?;
+
+        let index = self
+            .repo
+            .apply_to_tree(&base_commit.tree().unwrap(), &diff, None)?;
+        Ok(self.commit_index(index, commit, base_commit.id())?)
+    }
+
+    fn commit_index(
+        &self,
+        mut index: Index,
+        commit: Commit,
+        parent: Oid,
+    ) -> anyhow::Result<Commit> {
         if index.has_conflicts() {
             for c in index.conflicts()? {
                 let c = c?;
@@ -81,7 +111,7 @@ impl GitRepo {
             String::from_utf8_lossy(commit.author().name_bytes()).as_ref(),
             String::from_utf8_lossy(commit.author().email_bytes()).as_ref(),
         )?;
-        let base_commit = self.repo.find_commit(self.base_commit_id)?;
+        let base_commit = self.repo.find_commit(parent)?;
         let cherry_picked_commit = self
             .repo
             .commit(
@@ -93,6 +123,6 @@ impl GitRepo {
                 &[&base_commit],
             )
             .context("Committing")?;
-        Ok(cherry_picked_commit)
+        Ok(self.repo.find_commit(cherry_picked_commit)?)
     }
 }

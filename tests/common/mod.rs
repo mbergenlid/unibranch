@@ -110,11 +110,47 @@ impl TestRepoWithRemote {
             .current_dir(current_dir)
             .arg("commit")
             .arg("-a")
-            .arg("-m")
             .arg("--amend")
             .arg("--no-edit")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn commit_all_fixup(self, fixup_commit: Oid) -> Self {
+        let current_dir = self.local_repo_dir.path();
+        assert!(Command::new("git")
+            .current_dir(current_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        assert!(Command::new("git")
+            .current_dir(current_dir)
+            .arg("commit")
+            .arg("-a")
+            .arg(&format!("--fixup={}", fixup_commit))
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        assert!(Command::new("git")
+            .current_dir(current_dir)
+            .arg("-c")
+            .arg("sequence.editor=:")
+            .arg("rebase")
+            .arg("-i")
+            .arg("--autosquash")
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
             .status()
             .unwrap()
             .success());

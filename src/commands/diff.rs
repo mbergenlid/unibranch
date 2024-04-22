@@ -34,18 +34,24 @@ where
 
     let base = git_repo.base_commit_id;
 
+    let pr_commit = repo
+        .find_branch(&format!("origin/{}", branch_name), git2::BranchType::Remote)
+        .ok()
+        .and_then(|b| b.get().peel_to_commit().ok());
+
     let commit_id = if commit.parent(0).context("Has no parent")?.id() == base {
         //We are right on master
-        println!("Creating branch for commit '{}' ({})", title, &branch_name);
-        commit.id()
+        let cherry_picked_commit = git_repo.cherry_pick_commit(commit, pr_commit)?;
+        cherry_picked_commit.id()
     } else {
         //Need to cherry-pick the commit on top off master
-        let cherry_picked_commit = git_repo.cherry_pick_commit(commit)?;
+        let cherry_picked_commit = git_repo.cherry_pick_commit(commit, pr_commit)?;
         println!(
             "Creating branch for cherry-picked commit '{}' ({})",
-            cherry_picked_commit, &branch_name
+            cherry_picked_commit.id(),
+            &branch_name
         );
-        cherry_picked_commit
+        cherry_picked_commit.id()
     };
 
     let mut cmd = Command::new("git");
