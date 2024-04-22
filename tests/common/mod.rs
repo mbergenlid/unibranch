@@ -6,7 +6,7 @@ use std::{
     process::{Command, Output, Stdio},
 };
 
-use git2::Commit;
+use git2::{Commit, Oid};
 use tempfile::{tempdir, TempDir};
 
 pub struct TestRepoWithRemote {
@@ -33,6 +33,16 @@ impl TestRepoWithRemote {
             _remote_repo_dir: remote_repo_dir,
             local_repo,
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn head(&self) -> Oid {
+        self.local_repo
+            .head()
+            .unwrap()
+            .peel_to_commit()
+            .unwrap()
+            .id()
     }
 
     pub fn create_file<P>(self, path: P, content: &str) -> Self
@@ -76,6 +86,33 @@ impl TestRepoWithRemote {
             .arg("-a")
             .arg("-m")
             .arg(msg)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn commit_all_amend(self) -> Self {
+        let current_dir = self.local_repo_dir.path();
+        assert!(Command::new("git")
+            .current_dir(current_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        assert!(Command::new("git")
+            .current_dir(current_dir)
+            .arg("commit")
+            .arg("-a")
+            .arg("-m")
+            .arg("--amend")
+            .arg("--no-edit")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status()
@@ -131,5 +168,14 @@ impl TestRepoWithRemote {
         }
 
         commit
+    }
+
+    #[allow(dead_code)]
+    pub fn find_commit_by_reference(&self, reference: &str) -> Commit {
+        self.local_repo
+            .find_reference(reference)
+            .unwrap()
+            .peel_to_commit()
+            .unwrap()
     }
 }

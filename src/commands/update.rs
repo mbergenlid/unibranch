@@ -1,15 +1,16 @@
-use std::{ffi::CString, path::Path};
+use std::{
+    ffi::CString,
+    path::Path,
+    process::{Command, Stdio},
+};
 
 use anyhow::Context;
 use git2::Repository;
 
-pub fn update<T, P>(
-    commit_ref: Option<T>,
-    branch_commit: Option<T>,
-    repo_dir: P,
-) -> anyhow::Result<()>
+pub fn update<T1, T2, P>(commit_ref: Option<T1>, branch_ref: T2, repo_dir: P) -> anyhow::Result<()>
 where
-    T: AsRef<str>,
+    T1: AsRef<str>,
+    T2: AsRef<str>,
     P: AsRef<Path>,
 {
     let repo = Repository::open(repo_dir.as_ref()).context("Opening git repository")?;
@@ -17,7 +18,11 @@ where
     let commit_oid = commit_ref.unwrap().as_ref().parse()?;
     let commit = repo.find_commit(commit_oid)?;
 
-    let branch_commit = repo.find_commit(branch_commit.unwrap().as_ref().parse()?)?;
+    let branch_commit = repo
+        .find_reference(&format!("refs/remotes/origin/{}", branch_ref.as_ref()))
+        .context("Find reference")?
+        .peel_to_commit()
+        .context("Peel to commit")?;
     let diff = repo.diff_tree_to_tree(
         branch_commit.tree().ok().as_ref(),
         commit.tree().ok().as_ref(),
@@ -66,5 +71,25 @@ where
         .context("Committing")?;
 
     println!("Created patch commit {}", cherry_picked_commit);
+
+    let mut cmd = Command::new("git");
+    cmd.arg(format!("--git-dir={}/.git", repo_dir.as_ref().display()))
+        .arg("push")
+        .arg("--no-verify")
+        .arg("--")
+        .arg("origin")
+        .arg(format!(
+            "{}:refs/heads/{}",
+            cherry_picked_commit,
+            branch_ref.as_ref()
+        ));
+
+    let exit_status = cmd
+        .stderr(Stdio::null())
+        .stdout(Stdio::null())
+        .spawn()?
+        .wait()?;
+
+    println!("{}", exit_status);
     Ok(())
 }

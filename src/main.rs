@@ -15,7 +15,7 @@ enum Commands {
     },
     Update {
         commit_ref: Option<String>,
-        branch_commit: Option<String>,
+        branch_commit: String,
     },
 }
 const REPO_DIR: &str = "/tmp/test-repo";
@@ -28,7 +28,7 @@ fn main() -> anyhow::Result<()> {
         Commands::Update {
             commit_ref,
             branch_commit,
-        } => commands::update::update(commit_ref.as_ref(), branch_commit.as_ref(), REPO_DIR)?,
+        } => commands::update::update(commit_ref.as_ref(), branch_commit, REPO_DIR)?,
     };
     Ok(())
 }
