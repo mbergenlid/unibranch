@@ -1,13 +1,15 @@
 mod common;
 
-use common::TestRepoWithRemote;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
 use stackable_commits::commands::diff;
 
+use crate::common::RemoteRepo;
+
 #[test]
 fn test_update_a_diff() {
-    let repo = TestRepoWithRemote::new();
+    let remote = RemoteRepo::new();
+    let repo = remote.clone();
 
     let repo = repo
         .create_file("File1", "Hello world!")
@@ -78,7 +80,8 @@ fn test_update_a_diff() {
 
 #[test]
 fn test_a_more_complex_update() {
-    let repo = TestRepoWithRemote::new();
+    let remote = RemoteRepo::new();
+    let repo = remote.clone();
 
     let repo = repo
         .create_file("File1", "Hello world!")
@@ -157,4 +160,52 @@ fn test_a_more_complex_update() {
         -Some PR review fixes
     "};
     assert_eq!(actual_diff, expected_diff);
+}
+
+#[ignore = "Not implemented yet"]
+fn test_branch_updated_on_remote() {
+    let remote = RemoteRepo::new();
+    let repo = remote.clone();
+
+    let repo = repo
+        .create_file("File1", "Hello world!")
+        .commit_all("commit1")
+        .push();
+
+    let repo = repo
+        .create_file("File2", "Completely unrelated changes in another file")
+        .commit_all("unrelated commit");
+
+    let repo = repo
+        .append_file("File1", "Another Hello, World!")
+        .commit_all("commit2");
+
+    let current_dir = repo.local_repo_dir.path();
+
+    let commit = repo.find_commit(0).id();
+    diff::diff::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
+
+    let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
+        .expect("Output of diff is not valid UTF-8");
+    let expected_diff = indoc! {"
+        diff --git a/File1 b/File1
+        index e8151f3..cd08755 100644
+        --- a/File1
+        +++ b/File1
+        @@ -1,2 +1 @@
+         Hello world!
+        -Another Hello, World!
+    "};
+    assert_eq!(actual_diff, expected_diff);
+
+    //Someone else commits and pushes on branch origin/commit2
+    let other_checkout = remote.clone();
+
+    other_checkout
+        .checkout("commit2")
+        .create_file("File3", "Some other changes someone else decided to do")
+        .commit_all("other user change")
+        .push();
+
+    repo.fetch();
 }

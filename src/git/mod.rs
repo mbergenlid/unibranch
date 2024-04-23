@@ -38,7 +38,7 @@ impl GitRepo {
         Ok(self.repo.find_commit(commit)?)
     }
 
-    pub fn unpushed_commits(&self) -> anyhow::Result<Vec<Oid>> {
+    fn unpushed_commits(&self) -> anyhow::Result<Vec<Oid>> {
         let mut walk = self.repo.revwalk()?;
         walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
         walk.push_head()?;

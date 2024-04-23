@@ -1,5 +1,5 @@
 mod common;
-use common::TestRepoWithRemote;
+use common::RemoteRepo;
 use indoc::indoc;
 use stackable_commits::commands::diff;
 
@@ -7,7 +7,8 @@ use pretty_assertions::assert_eq;
 
 #[test]
 fn basic_test() {
-    let repo = TestRepoWithRemote::new();
+    let remote = RemoteRepo::new();
+    let repo = remote.clone();
 
     let repo = repo
         .create_file("File1", "Hello world!")
@@ -45,7 +46,8 @@ fn basic_test() {
 
 #[test]
 fn test_diff_from_not_head_commit() {
-    let repo = TestRepoWithRemote::new();
+    let remote = RemoteRepo::new();
+    let repo = remote.clone();
 
     let repo = repo
         .create_file("File1", "Hello world!")
