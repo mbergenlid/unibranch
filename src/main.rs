@@ -10,7 +10,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Diff { commit_ref: Option<String> },
+    Push { commit_ref: Option<String> },
 }
 const REPO_DIR: &str = "/tmp/test-repo";
 
@@ -18,7 +18,7 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Diff { commit_ref } => commands::diff::diff(commit_ref.as_ref(), REPO_DIR)?,
+        Commands::Push { commit_ref } => commands::push(commit_ref.as_ref(), REPO_DIR)?,
     };
     Ok(())
 }

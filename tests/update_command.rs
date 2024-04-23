@@ -2,7 +2,7 @@ mod common;
 
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use stackable_commits::commands::diff;
+use stackable_commits::commands::push;
 
 use crate::common::RemoteRepo;
 
@@ -23,7 +23,7 @@ fn test_update_a_diff() {
     let current_dir = repo.local_repo_dir.path();
 
     let commit = repo.find_commit(0).id();
-    diff::diff::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
+    push::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());
@@ -46,7 +46,7 @@ fn test_update_a_diff() {
         .commit_all_amend();
 
     let head = repo.find_commit(0).id();
-    diff::diff(Some(&format!("{}", head)), repo.local_repo_dir.path()).unwrap();
+    push(Some(&format!("{}", head)), repo.local_repo_dir.path()).unwrap();
 
     //Verify the diff now.
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
@@ -99,7 +99,7 @@ fn test_a_more_complex_update() {
     let current_dir = repo.local_repo_dir.path();
 
     let commit = repo.find_commit(0).id();
-    diff::diff::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
+    push::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());
@@ -130,7 +130,7 @@ fn test_a_more_complex_update() {
         .commit_all_fixup(unrelated_commit);
 
     let head = repo.find_commit(0).id();
-    diff::diff(Some(&format!("{}", head)), repo.local_repo_dir.path()).unwrap();
+    push(Some(&format!("{}", head)), repo.local_repo_dir.path()).unwrap();
 
     //Verify the diff now.
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
@@ -163,6 +163,7 @@ fn test_a_more_complex_update() {
 }
 
 #[ignore = "Not implemented yet"]
+#[allow(dead_code)]
 fn test_branch_updated_on_remote() {
     let remote = RemoteRepo::new();
     let repo = remote.clone();
@@ -183,7 +184,7 @@ fn test_branch_updated_on_remote() {
     let current_dir = repo.local_repo_dir.path();
 
     let commit = repo.find_commit(0).id();
-    diff::diff::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
+    push::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
 
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
         .expect("Output of diff is not valid UTF-8");

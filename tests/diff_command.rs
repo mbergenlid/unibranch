@@ -1,7 +1,7 @@
 mod common;
 use common::RemoteRepo;
 use indoc::indoc;
-use stackable_commits::commands::diff;
+use stackable_commits::commands::push;
 
 use pretty_assertions::assert_eq;
 
@@ -25,7 +25,7 @@ fn basic_test() {
 
     let current_dir = repo.local_repo_dir.path();
 
-    diff::diff::<&str, _>(None, current_dir).unwrap();
+    push::<&str, _>(None, current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit3");
     assert!(!remote_head.stdout.is_empty());
@@ -65,7 +65,7 @@ fn test_diff_from_not_head_commit() {
     let current_dir = repo.local_repo_dir.path();
 
     let commit = repo.find_commit(1).id();
-    diff::diff::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
+    push::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());

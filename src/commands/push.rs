@@ -9,7 +9,7 @@ use git2::Repository;
 use crate::git::GitRepo;
 
 //TODO: Put reference to the remote branch name in the local commit
-pub fn diff<T, P>(commit_ref: Option<T>, repo_dir: P) -> anyhow::Result<()>
+pub fn push<T, P>(commit_ref: Option<T>, repo_dir: P) -> anyhow::Result<()>
 where
     T: AsRef<str>,
     P: AsRef<Path>,

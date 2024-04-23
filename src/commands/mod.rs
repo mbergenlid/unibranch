@@ -1,1 +1,3 @@
-pub mod diff;
+mod push;
+
+pub use push::push;
