@@ -1,9 +1,19 @@
 mod common;
+
 use common::RemoteRepo;
+use git2::Oid;
 use indoc::indoc;
-use stackable_commits::commands::push;
+use spr::commands::{self, push};
 
 use pretty_assertions::assert_eq;
+
+fn push_options(commit_ref: Option<Oid>) -> commands::PushOptions {
+    commands::PushOptions {
+        dry_run: false,
+        rebase: false,
+        commit_ref: commit_ref.map(|id| format!("{}", id)),
+    }
+}
 
 #[test]
 fn basic_test() {
@@ -25,7 +35,7 @@ fn basic_test() {
 
     let current_dir = repo.local_repo_dir.path();
 
-    push::<&str, _>(None, current_dir).unwrap();
+    push(push_options(None), current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit3");
     assert!(!remote_head.stdout.is_empty());
@@ -65,7 +75,7 @@ fn test_diff_from_not_head_commit() {
     let current_dir = repo.local_repo_dir.path();
 
     let commit = repo.find_commit(1).id();
-    push::<&str, _>(Some(&format!("{}", commit)), current_dir).unwrap();
+    push(push_options(Some(commit)), current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());

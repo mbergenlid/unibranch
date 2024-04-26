@@ -29,7 +29,7 @@ impl GitRepo {
         let remote_ref = format!(
             "refs/remotes/origin/{}",
             current_branch_name
-                .split("/")
+                .split('/')
                 .last()
                 .expect("Must have at least one element")
         );
@@ -78,26 +78,36 @@ impl GitRepo {
 
     pub fn cherry_pick_commit(
         &self,
-        commit: Commit,
+        original_commit: Commit,
         pr_head: Option<Commit>,
     ) -> anyhow::Result<Option<Commit>> {
-        //TODO: Ignore empty commits
-        //TODO: Commit message should be fixup!
-        let index = self.repo.cherrypick_commit(
-            &commit,
-            &self.repo.find_commit(self.base_commit_id)?,
-            0,
+        let base_commit = self.repo.find_commit(self.base_commit_id)?;
+        let complete_index = self
+            .repo
+            .cherrypick_commit(&original_commit, &base_commit, 0, None)
+            .context("Cherry picking directly on master")?;
+
+        let parent_commit = pr_head.unwrap_or(base_commit);
+        let diff = self.repo.diff_tree_to_index(
+            Some(&parent_commit.tree()?),
+            Some(&complete_index),
             None,
         )?;
 
-        let base_commit = pr_head.unwrap_or_else(|| {
-            self.repo
-                .find_commit(self.base_commit_id)
-                .expect("No commit for base commit id")
-        });
-        let diff = self
-            .repo
-            .diff_tree_to_index(Some(&base_commit.tree()?), Some(&index), None)?;
+        let first_pr_commit = {
+            let mut walk = self.repo.revwalk()?;
+            walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
+            walk.push(parent_commit.id())?;
+            walk.hide(self.base_commit_id)?;
+            walk.next().and_then(|r| r.ok())
+        };
+
+        if let Some(first_commit_id) = first_pr_commit {
+            let first_commit = self.repo.find_commit(first_commit_id)?;
+            if first_commit.message() != original_commit.message() {
+                println!("Commit message changed, need to update");
+            }
+        }
 
         if diff.deltas().len() == 0 {
             println!("Already up to date");
@@ -105,19 +115,33 @@ impl GitRepo {
         } else {
             let index = self
                 .repo
-                .apply_to_tree(&base_commit.tree().unwrap(), &diff, None)?;
-            for i in index.iter() {
-                dbg!(i);
+                .apply_to_tree(&parent_commit.tree().unwrap(), &diff, None)
+                .context("Apply diff to parent")?;
+
+            if parent_commit.id() == self.base_commit_id {
+                Ok(Some(self.commit_index(
+                    index,
+                    &original_commit,
+                    parent_commit.id(),
+                    original_commit.message().expect("No commit message"),
+                )?))
+            } else {
+                Ok(Some(self.commit_index(
+                    index,
+                    &original_commit,
+                    parent_commit.id(),
+                    &format!("Fixup! {}", parent_commit.id()),
+                )?))
             }
-            Ok(Some(self.commit_index(index, commit, base_commit.id())?))
         }
     }
 
     fn commit_index(
         &self,
         mut index: Index,
-        commit: Commit,
+        original_commit: &Commit,
         parent: Oid,
+        message: &str,
     ) -> anyhow::Result<Commit> {
         if index.has_conflicts() {
             for c in index.conflicts()? {
@@ -142,25 +166,18 @@ impl GitRepo {
         let base_commit = self.repo.find_commit(parent)?;
         let committer = self.repo.signature().or_else(|_| {
             git2::Signature::now(
-                String::from_utf8_lossy(commit.committer().name_bytes()).as_ref(),
-                String::from_utf8_lossy(commit.committer().email_bytes()).as_ref(),
+                String::from_utf8_lossy(original_commit.committer().name_bytes()).as_ref(),
+                String::from_utf8_lossy(original_commit.committer().email_bytes()).as_ref(),
             )
         })?;
 
         let author = git2::Signature::now(
-            String::from_utf8_lossy(commit.author().name_bytes()).as_ref(),
-            String::from_utf8_lossy(commit.author().email_bytes()).as_ref(),
+            String::from_utf8_lossy(original_commit.author().name_bytes()).as_ref(),
+            String::from_utf8_lossy(original_commit.author().email_bytes()).as_ref(),
         )?;
         let cherry_picked_commit = self
             .repo
-            .commit(
-                None,
-                &author,
-                &committer,
-                commit.message().expect("No commit message"),
-                &tree,
-                &[&base_commit],
-            )
+            .commit(None, &author, &committer, message, &tree, &[&base_commit])
             .context("Committing")?;
         Ok(self.repo.find_commit(cherry_picked_commit)?)
     }
