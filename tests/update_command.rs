@@ -3,13 +3,12 @@ mod common;
 use git2::Oid;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use spr::commands::push;
-use spr::commands::PushOptions;
+use spr::commands::cherry_pick;
 
 use crate::common::RemoteRepo;
 
-fn push_options(commit_ref: Option<Oid>) -> PushOptions {
-    PushOptions {
+fn push_options(commit_ref: Option<Oid>) -> cherry_pick::Options {
+    cherry_pick::Options {
         dry_run: false,
         rebase: false,
         commit_ref: commit_ref.map(|id| format!("{}", id)),
@@ -33,7 +32,7 @@ fn test_update_a_diff() {
     let current_dir = repo.local_repo_dir.path();
 
     let commit = repo.find_commit(0).id();
-    push(push_options(Some(commit)), current_dir).unwrap();
+    cherry_pick::execute(push_options(Some(commit)), current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());
@@ -56,7 +55,7 @@ fn test_update_a_diff() {
         .commit_all_amend();
 
     let head = repo.find_commit(0).id();
-    push(push_options(Some(head)), repo.local_repo_dir.path()).unwrap();
+    cherry_pick::execute(push_options(Some(head)), repo.local_repo_dir.path()).unwrap();
 
     //Verify the diff now.
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
@@ -109,7 +108,7 @@ fn test_a_more_complex_update() {
     let current_dir = repo.local_repo_dir.path();
 
     let commit = repo.find_commit(0).id();
-    push(push_options(Some(commit)), current_dir).unwrap();
+    cherry_pick::execute(push_options(Some(commit)), current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());
@@ -140,7 +139,7 @@ fn test_a_more_complex_update() {
         .commit_all_fixup(unrelated_commit);
 
     let head = repo.find_commit(0).id();
-    push(push_options(Some(head)), repo.local_repo_dir.path()).unwrap();
+    cherry_pick::execute(push_options(Some(head)), repo.local_repo_dir.path()).unwrap();
 
     //Verify the diff now.
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
@@ -194,7 +193,7 @@ fn test_branch_updated_on_remote() {
     let current_dir = repo.local_repo_dir.path();
 
     let commit = repo.find_commit(0).id();
-    push(push_options(Some(commit)), current_dir).unwrap();
+    cherry_pick::execute(push_options(Some(commit)), current_dir).unwrap();
 
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
         .expect("Output of diff is not valid UTF-8");

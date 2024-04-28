@@ -7,6 +7,7 @@ use git2::{Commit, Index, Oid, Repository, RepositoryOpenFlags};
 pub struct GitRepo {
     repo: git2::Repository,
     pub base_commit_id: Oid,
+    pub current_branch_name: String,
 }
 
 impl GitRepo {
@@ -26,19 +27,19 @@ impl GitRepo {
         }
 
         let current_branch_name = head.name().expect("Branch must have a name");
+        let current_branch_name = current_branch_name.strip_prefix("refs/heads/").expect("Unknown branch format");
         let remote_ref = format!(
             "refs/remotes/origin/{}",
             current_branch_name
-                .split('/')
-                .last()
-                .expect("Must have at least one element")
         );
         let base_commit_id = repo.refname_to_id(&remote_ref)?;
+        let current_branch_name = current_branch_name.into();
 
         drop(head);
         Ok(GitRepo {
             repo,
             base_commit_id,
+            current_branch_name,
         })
     }
 
