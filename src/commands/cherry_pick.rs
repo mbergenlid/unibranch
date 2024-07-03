@@ -38,7 +38,7 @@ where
     let msg = commit.message().unwrap_or("No commit message");
     let title = msg.lines().next().expect("Must have at least one line");
     let branch_name = title
-        .replace(|c| c == ':' || c == ' ', "-")
+        .replace(|c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '_'), "-")
         .to_ascii_lowercase();
 
     let pr_commit = if config.rebase {
@@ -57,9 +57,11 @@ where
                 );
                 return Ok(());
             }
-            cmd.arg(format!("--git-dir={}/.git", repo_dir.as_ref().display()))
+            cmd
+                .current_dir(repo_dir.as_ref())
                 .arg("push")
                 .arg("--no-verify")
+                .arg("--force-with-lease")
                 .arg("--")
                 .arg("origin")
                 .arg(format!(
@@ -75,7 +77,8 @@ where
                 .wait()?;
         }
         Ok(None) => todo!(),
-        Err(_) => {
+        Err(e) => {
+            eprintln!("{:?}", e);
             eprintln!("Diff doesn't apply cleanly on master")
         }
     };
