@@ -3,7 +3,7 @@ mod common;
 use git2::Oid;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use spr::commands::cherry_pick;
+use sc::commands::cherry_pick;
 
 use crate::common::RemoteRepo;
 

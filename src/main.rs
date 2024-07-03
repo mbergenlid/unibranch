@@ -1,5 +1,5 @@
 use clap::{command, Parser, Subcommand};
-use spr::commands::{cherry_pick, push};
+use sc::commands::{cherry_pick, push};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
