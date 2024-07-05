@@ -1,12 +1,15 @@
-use std::path::Path;
 use crate::git::GitRepo;
 use anyhow::Context;
+use std::path::Path;
 use std::process::Command;
 
-pub fn execute<P>(repo_dir: P) -> anyhow::Result<()> where P: AsRef<Path> {
+pub fn execute<P>(repo_dir: P) -> anyhow::Result<()>
+where
+    P: AsRef<Path>,
+{
     let git_repo = GitRepo::open(repo_dir.as_ref()).context("Opening git repository")?;
 
-    let user =  std::env::var("USER").context("No $USER env variable")?;
+    let user = std::env::var("USER").context("No $USER env variable")?;
     let branch_name = format!("{}/{}", user, git_repo.current_branch_name);
 
     Command::new("git")

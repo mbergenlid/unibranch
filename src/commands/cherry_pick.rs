@@ -24,21 +24,19 @@ where
 {
     let git_repo = GitRepo::open(repo_dir.as_ref()).context("Opening git repository")?;
 
-    let commit_oid = match &config.commit_ref {
-        Some(commit_ref) => commit_ref
-            .parse()
-            .with_context(|| format!("Invalid OID: {}", commit_ref))?,
-        None => git_repo
-            .head()
+    let commit = if let Some(rev) = config.commit_ref {
+        git_repo.find_unpushed_commit(&rev)?
+    } else {
+        git_repo.head()
             .context("HEAD does not point to a valid commit")?
-            .id(),
     };
-
-    let commit = git_repo.find_unpushed_commit_by_id(commit_oid)?;
     let msg = commit.message().unwrap_or("No commit message");
     let title = msg.lines().next().expect("Must have at least one line");
     let branch_name = title
-        .replace(|c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '_'), "-")
+        .replace(
+            |c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '_'),
+            "-",
+        )
         .to_ascii_lowercase();
 
     let pr_commit = if config.rebase {
@@ -57,8 +55,7 @@ where
                 );
                 return Ok(());
             }
-            cmd
-                .current_dir(repo_dir.as_ref())
+            cmd.current_dir(repo_dir.as_ref())
                 .arg("push")
                 .arg("--no-verify")
                 .arg("--force-with-lease")

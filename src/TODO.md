@@ -3,3 +3,5 @@
 * add --amend flag meaning don't create a fixup commit but instead amending the first commit
 * Able to update the commit message
 * ✅ Can't apply upstream changes as fixup commit
+* Binary files
+* Dependant changes

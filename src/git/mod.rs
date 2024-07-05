@@ -27,11 +27,10 @@ impl GitRepo {
         }
 
         let current_branch_name = head.name().expect("Branch must have a name");
-        let current_branch_name = current_branch_name.strip_prefix("refs/heads/").expect("Unknown branch format");
-        let remote_ref = format!(
-            "refs/remotes/origin/{}",
-            current_branch_name
-        );
+        let current_branch_name = current_branch_name
+            .strip_prefix("refs/heads/")
+            .expect("Unknown branch format");
+        let remote_ref = format!("refs/remotes/origin/{}", current_branch_name);
         let base_commit_id = repo.refname_to_id(&remote_ref)?;
         let current_branch_name = current_branch_name.into();
 
@@ -58,23 +57,21 @@ impl GitRepo {
             .and_then(|b| b.get().peel_to_commit().ok())
     }
 
-    pub fn find_unpushed_commit_by_id(&self, id: Oid) -> anyhow::Result<Commit> {
-        let commit: git2::Oid = self
-            .unpushed_commits()?
-            .into_iter()
-            .find(|&oid| oid == id)
-            .with_context(|| format!("Unable to find revision {}", id))?;
 
-        Ok(self.repo.find_commit(commit)?)
-    }
+    pub fn find_unpushed_commit(&self, commit_ref: &str) -> anyhow::Result<Commit> {
+        let (obj, _) = self.repo.revparse_ext(commit_ref)?;
+        let commit = obj.peel_to_commit()?;
+        if !self
+            .repo
+            .graph_descendant_of(commit.id(), self.base_commit_id)?
+        {
+            anyhow::bail!(format!(
+                "Commit {} is already pushed to the remote",
+                commit.id()
+            ));
+        }
 
-    fn unpushed_commits(&self) -> anyhow::Result<Vec<Oid>> {
-        let mut walk = self.repo.revwalk()?;
-        walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
-        walk.push_head()?;
-        walk.hide(self.base_commit_id)?;
-
-        Ok(walk.collect::<Result<Vec<_>, _>>()?)
+        Ok(commit)
     }
 
     pub fn cherry_pick_commit(

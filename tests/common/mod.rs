@@ -211,6 +211,7 @@ impl<'a> TestRepoWithRemote<'a> {
         self
     }
 
+    #[allow(dead_code)]
     pub fn ls_remote_heads(&self, name: &str) -> Output {
         let current_dir = self.local_repo_dir.path();
         Command::new("git")
@@ -223,6 +224,7 @@ impl<'a> TestRepoWithRemote<'a> {
             .unwrap()
     }
 
+    #[allow(dead_code)]
     pub fn diff(&self, ref1: &str, ref2: &str) -> Output {
         let current_dir = self.local_repo_dir.path();
         Command::new("git")
