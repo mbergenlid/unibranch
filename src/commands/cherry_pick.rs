@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Context;
 
-use crate::git::GitRepo;
+use crate::git::{local_commit::CommitMetadata, GitRepo};
 
 #[derive(clap::Parser)]
 pub struct Options {
@@ -17,7 +17,6 @@ pub struct Options {
     pub commit_ref: Option<String>,
 }
 
-//TODO: Put reference to the remote branch name in the local commit
 pub fn execute<P>(config: Options, repo_dir: P) -> anyhow::Result<()>
 where
     P: AsRef<Path>,
@@ -27,9 +26,11 @@ where
     let commit = if let Some(rev) = config.commit_ref {
         git_repo.find_unpushed_commit(&rev)?
     } else {
-        git_repo.head()
+        git_repo
+            .head()
             .context("HEAD does not point to a valid commit")?
     };
+
     let msg = commit.message().unwrap_or("No commit message");
     let title = msg.lines().next().expect("Must have at least one line");
     let branch_name = title
@@ -44,7 +45,7 @@ where
     } else {
         git_repo.find_head_of_remote_branch(&branch_name)
     };
-    match git_repo.cherry_pick_commit(commit, pr_commit) {
+    match git_repo.cherry_pick_commit(commit.clone(), pr_commit) {
         Ok(Some(cherry_picked_commit)) => {
             let mut cmd = Command::new("git");
             if config.dry_run {
@@ -55,6 +56,12 @@ where
                 );
                 return Ok(());
             }
+            git_repo.rewrite_local_commit(
+                &commit,
+                CommitMetadata {
+                    remote_branch_name: &branch_name,
+                },
+            )?;
             cmd.current_dir(repo_dir.as_ref())
                 .arg("push")
                 .arg("--no-verify")

@@ -5,3 +5,4 @@
 * ✅ Can't apply upstream changes as fixup commit
 * Binary files
 * Dependant changes
+* Non utf-8 commit messages
