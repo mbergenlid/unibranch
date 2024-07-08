@@ -7,6 +7,7 @@ use std::{
 };
 
 use git2::{Commit, Oid};
+use pretty_assertions::assert_eq;
 use tempfile::{tempdir, TempDir};
 
 pub struct RemoteRepo {
@@ -146,6 +147,33 @@ impl<'a> TestRepoWithRemote<'a> {
     }
 
     #[allow(dead_code)]
+    pub fn commit_all_amend_with_message(self, message: &str) -> Self {
+        let current_dir = self.local_repo_dir.path();
+        assert!(Command::new("git")
+            .current_dir(current_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        assert!(Command::new("git")
+            .current_dir(current_dir)
+            .arg("commit")
+            .arg("-a")
+            .arg("--amend")
+            .arg("-m")
+            .arg(message)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        self
+    }
+
+    #[allow(dead_code)]
     pub fn commit_all_fixup(self, fixup_commit: Oid) -> Self {
         let current_dir = self.local_repo_dir.path();
         assert!(Command::new("git")
@@ -236,6 +264,20 @@ impl<'a> TestRepoWithRemote<'a> {
             .unwrap()
     }
 
+    #[allow(dead_code)]
+    pub fn find_note(&self, rev: &str) -> String {
+        let current_dir = self.local_repo_dir.path();
+
+        let out = Command::new("git")
+            .current_dir(current_dir)
+            .arg("notes")
+            .arg("show")
+            .arg(rev)
+            .output()
+            .unwrap();
+        String::from_utf8(out.stdout).expect("Output is not valid UTF-8")
+    }
+
     pub fn find_commit(&self, ancestors: u32) -> Commit {
         let head = self.local_repo.head().unwrap();
 
@@ -255,5 +297,14 @@ impl<'a> TestRepoWithRemote<'a> {
             .unwrap()
             .peel_to_commit()
             .unwrap()
+    }
+
+    #[allow(dead_code)]
+    pub fn assert_log(&self, messages: Vec<&str>) {
+        for (index, expected_message) in messages.into_iter().enumerate() {
+            let local_commit = &self.find_commit(index as u32);
+            let actual_message = local_commit.message().unwrap();
+            assert_eq!(actual_message, expected_message);
+        }
     }
 }

@@ -2,7 +2,7 @@ use std::{ffi::CString, path::Path};
 
 use anyhow::{Context, Ok};
 use clap::builder::OsStr;
-use git2::{Commit, Index, Oid, Repository, RepositoryOpenFlags};
+use git2::{Commit, Index, Note, Oid, Repository, RepositoryOpenFlags};
 
 use self::local_commit::CommitMetadata;
 
@@ -39,6 +39,9 @@ impl GitRepo {
         let current_branch_name = current_branch_name.into();
 
         drop(head);
+
+        let mut config = repo.config()?;
+        config.set_str("notes.rewriteRef", "refs/notes/*")?;
         Ok(GitRepo {
             repo,
             base_commit_id,
@@ -77,10 +80,44 @@ impl GitRepo {
         Ok(commit)
     }
 
+    pub fn find_note_for_commit(&self, commit_id: Oid) -> anyhow::Result<Option<Note>> {
+        let res = self.repo.find_note(None, commit_id);
+        if let Err(error) = res {
+            match error.code() {
+                git2::ErrorCode::NotFound => return Ok(None),
+                _ => anyhow::bail!(error),
+            }
+        }
+        let note = res.expect("Already checked for error above");
+        Ok(Some(note))
+    }
+
+    pub fn save_meta_data(
+        &self,
+        commit: &Commit,
+        meta_data: &CommitMetadata,
+    ) -> anyhow::Result<()> {
+        let committer = self.repo.signature().or_else(|_| {
+            git2::Signature::now(
+                String::from_utf8_lossy(commit.committer().name_bytes()).as_ref(),
+                String::from_utf8_lossy(commit.committer().email_bytes()).as_ref(),
+            )
+        })?;
+        self.repo.note(
+            &committer,
+            &committer,
+            None,
+            commit.id(),
+            &format!("{}", meta_data),
+            false,
+        )?;
+        Ok(())
+    }
+
     pub fn rewrite_local_commit(
         &self,
         commit: &Commit,
-        config: CommitMetadata,
+        config: &CommitMetadata,
     ) -> anyhow::Result<()> {
         let branch = self
             .repo
