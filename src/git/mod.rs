@@ -4,6 +4,10 @@ use anyhow::{Context, Ok};
 use clap::builder::OsStr;
 use git2::{Commit, Index, Oid, Repository, RepositoryOpenFlags};
 
+use self::local_commit::CommitMetadata;
+
+pub mod local_commit;
+
 pub struct GitRepo {
     repo: git2::Repository,
     pub base_commit_id: Oid,
@@ -57,7 +61,6 @@ impl GitRepo {
             .and_then(|b| b.get().peel_to_commit().ok())
     }
 
-
     pub fn find_unpushed_commit(&self, commit_ref: &str) -> anyhow::Result<Commit> {
         let (obj, _) = self.repo.revparse_ext(commit_ref)?;
         let commit = obj.peel_to_commit()?;
@@ -72,6 +75,50 @@ impl GitRepo {
         }
 
         Ok(commit)
+    }
+
+    pub fn rewrite_local_commit(
+        &self,
+        commit: &Commit,
+        config: CommitMetadata,
+    ) -> anyhow::Result<()> {
+        let branch = self
+            .repo
+            .reference_to_annotated_commit(&self.repo.head()?)?;
+        let remote = self.repo.reference_to_annotated_commit(
+            self.repo
+                .find_branch(
+                    &format!("origin/{}", &self.current_branch_name),
+                    git2::BranchType::Remote,
+                )?
+                .get(),
+        )?;
+        let mut rebase = self.repo.rebase(Some(&branch), Some(&remote), None, None)?;
+
+        let committer = self.repo.signature().or_else(|_| {
+            git2::Signature::now(
+                String::from_utf8_lossy(commit.committer().name_bytes()).as_ref(),
+                String::from_utf8_lossy(commit.committer().email_bytes()).as_ref(),
+            )
+        })?;
+        while let Some(op) = rebase.next() {
+            let op = op?;
+            if op.id() == commit.id() {
+                rebase.commit(
+                    None,
+                    &committer,
+                    Some(&format!(
+                        "{}\nmeta:\n{}",
+                        commit.message().expect("No commmit message"),
+                        config,
+                    )),
+                )?;
+            } else {
+                rebase.commit(None, &committer, None)?;
+            }
+        }
+        let _ = rebase.finish(None);
+        Ok(())
     }
 
     pub fn cherry_pick_commit(

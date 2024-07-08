@@ -1,6 +1,6 @@
 mod common;
 
-use common::RemoteRepo;
+use common::{RemoteRepo, TestRepoWithRemote};
 use git2::Oid;
 use indoc::indoc;
 use sc::commands::cherry_pick;
@@ -52,6 +52,20 @@ fn basic_test() {
         -Yet another Hello, World!
     "};
     assert_eq!(output, expected_diff);
+
+    assert_log(
+        &repo,
+        vec![
+            indoc! {"
+                commit3
+
+                meta:
+                remote-branch: commit3
+            "},
+            "commit2\n",
+            "commit1\n",
+        ],
+    )
 }
 
 #[test]
@@ -92,4 +106,26 @@ fn test_diff_from_not_head_commit() {
         -Another Hello, World!
     "};
     assert_eq!(actual_diff, expected_diff);
+
+    assert_log(
+        &repo,
+        vec![
+            "commit3\n",
+            indoc! {"
+                commit2
+
+                meta:
+                remote-branch: commit2
+            "},
+            "commit1\n",
+        ],
+    )
+}
+
+fn assert_log(repo: &TestRepoWithRemote, messages: Vec<&str>) {
+    for (index, expected_message) in messages.into_iter().enumerate() {
+        let local_commit = &repo.find_commit(index as u32);
+        let actual_message = local_commit.message().unwrap();
+        assert_eq!(actual_message, expected_message);
+    }
 }
