@@ -46,6 +46,23 @@ pub struct TestRepoWithRemote<'a> {
 
 impl<'a> TestRepoWithRemote<'a> {
     #[allow(dead_code)]
+    pub fn head_branch(&self) -> String {
+        let current_dir = self.local_repo_dir.path();
+        String::from_utf8(
+            Command::new("git")
+                .current_dir(current_dir)
+                .arg("branch")
+                .arg("--show-current")
+                .output()
+                .expect("No stdout from branch --show-current")
+                .stdout,
+        )
+        .expect("")
+        .trim()
+        .to_string()
+    }
+
+    #[allow(dead_code)]
     pub fn head(&self) -> Oid {
         self.local_repo
             .head()
@@ -240,6 +257,22 @@ impl<'a> TestRepoWithRemote<'a> {
     }
 
     #[allow(dead_code)]
+    pub fn fetch_ref(self, rev: &str) -> Self {
+        let current_dir = self.local_repo_dir.path();
+
+        assert!(Command::new("git")
+            .current_dir(current_dir)
+            .arg("fetch")
+            .arg(rev)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        self
+    }
+
+    #[allow(dead_code)]
     pub fn ls_remote_heads(&self, name: &str) -> Output {
         let current_dir = self.local_repo_dir.path();
         Command::new("git")
@@ -297,6 +330,22 @@ impl<'a> TestRepoWithRemote<'a> {
             .unwrap()
             .peel_to_commit()
             .unwrap()
+    }
+
+    #[allow(dead_code)]
+    pub fn rev_parse(&self, rev: &str) -> String {
+        let current_dir = self.local_repo_dir.path();
+
+        let out = Command::new("git")
+            .current_dir(current_dir)
+            .arg("rev-parse")
+            .arg(rev)
+            .output()
+            .unwrap();
+        String::from_utf8(out.stdout)
+            .expect("Output is not valid UTF-8")
+            .trim()
+            .to_string()
     }
 
     #[allow(dead_code)]

@@ -90,7 +90,9 @@ fn test_update_a_diff() {
         repo.find_note("head"),
         indoc! {"
             remote-branch: commit2
+            remote-commit: {}
         "}
+        .replace("{}", &repo.rev_parse("origin/commit2"))
     );
 }
 
@@ -203,7 +205,9 @@ fn test_update_a_commit_and_modify_the_commit_message() {
         repo.find_note("head"),
         indoc! {"
             remote-branch: commit2
+            remote-commit: {}
         "}
+        .replace("{}", &repo.rev_parse("origin/commit2"))
     );
 
     let repo = repo
@@ -214,7 +218,9 @@ fn test_update_a_commit_and_modify_the_commit_message() {
         repo.find_note("head"),
         indoc! {"
             remote-branch: commit2
+            remote-commit: {}
         "}
+        .replace("{}", &repo.rev_parse("origin/commit2"))
     );
 
     let head = repo.find_commit(0).id();
@@ -225,7 +231,9 @@ fn test_update_a_commit_and_modify_the_commit_message() {
         repo.find_note("head"),
         indoc! {"
             remote-branch: commit2
+            remote-commit: {}
         "}
+        .replace("{}", &repo.rev_parse("origin/commit2"))
     );
 
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)

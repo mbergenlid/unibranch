@@ -53,12 +53,20 @@ fn basic_test() {
     "};
     assert_eq!(output, expected_diff);
 
-    assert_eq!(
-        repo.find_note("head"),
-        indoc! {"
+    let expected_note = indoc! {"
             remote-branch: commit3
-        "},
+            remote-commit: {}
+        "};
+    let expected_note = expected_note.replacen(
+        "{}",
+        &format!(
+            "{}",
+            repo.find_commit_by_reference("refs/remotes/origin/commit3")
+                .id()
+        ),
+        1,
     );
+    assert_eq!(repo.find_note("head"), expected_note,);
 }
 
 #[test]
@@ -100,10 +108,18 @@ fn test_diff_from_not_head_commit() {
     "};
     assert_eq!(actual_diff, expected_diff);
 
-    assert_eq!(
-        repo.find_note("head^"),
-        indoc! {"
+    let expected_note = indoc! {"
             remote-branch: commit2
-        "},
+            remote-commit: {}
+        "};
+    let expected_note = expected_note.replacen(
+        "{}",
+        &format!(
+            "{}",
+            repo.find_commit_by_reference("refs/remotes/origin/commit2")
+                .id()
+        ),
+        1,
     );
+    assert_eq!(repo.find_note("head^"), expected_note,);
 }

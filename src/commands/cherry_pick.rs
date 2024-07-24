@@ -47,6 +47,7 @@ where
                 .to_ascii_lowercase();
             CommitMetadata {
                 remote_branch_name: std::borrow::Cow::Owned(branch_name),
+                remote_commit: None,
             }
         });
 
@@ -55,7 +56,7 @@ where
     } else {
         git_repo.find_head_of_remote_branch(&meta_data.remote_branch_name)
     };
-    match git_repo.cherry_pick_commit(commit.clone(), pr_commit) {
+    match git_repo.cherry_pick_commit(&commit, pr_commit) {
         Ok(Some(cherry_picked_commit)) => {
             let mut cmd = Command::new("git");
             if config.dry_run {
@@ -66,9 +67,11 @@ where
                 );
                 return Ok(());
             }
-            if meta_data.is_modified() {
-                git_repo.save_meta_data(&commit, &meta_data)?;
-            }
+            let new_meta_data = CommitMetadata {
+                remote_branch_name: meta_data.remote_branch_name,
+                remote_commit: Some(cherry_picked_commit.id()),
+            };
+            git_repo.save_meta_data(&commit, &new_meta_data)?;
             cmd.current_dir(repo_dir.as_ref())
                 .arg("push")
                 .arg("--no-verify")
@@ -78,7 +81,7 @@ where
                 .arg(format!(
                     "{}:refs/heads/{}",
                     cherry_picked_commit.id(),
-                    meta_data.remote_branch_name
+                    new_meta_data.remote_branch_name
                 ));
 
             let _exit_status = cmd

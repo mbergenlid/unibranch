@@ -65,7 +65,10 @@ impl GitRepo {
     }
 
     pub fn find_unpushed_commit(&self, commit_ref: &str) -> anyhow::Result<Commit> {
-        let (obj, _) = self.repo.revparse_ext(commit_ref)?;
+        let (obj, _) = self
+            .repo
+            .revparse_ext(commit_ref)
+            .with_context(|| format!("Bad revision '{}'", commit_ref))?;
         let commit = obj.peel_to_commit()?;
         if !self
             .repo
@@ -109,7 +112,7 @@ impl GitRepo {
             None,
             commit.id(),
             &format!("{}", meta_data),
-            false,
+            true,
         )?;
         Ok(())
     }
@@ -160,13 +163,13 @@ impl GitRepo {
 
     pub fn cherry_pick_commit(
         &self,
-        original_commit: Commit,
+        original_commit: &Commit,
         pr_head: Option<Commit>,
     ) -> anyhow::Result<Option<Commit>> {
         let base_commit = self.repo.find_commit(self.base_commit_id)?;
         let complete_index = self
             .repo
-            .cherrypick_commit(&original_commit, &base_commit, 0, None)
+            .cherrypick_commit(original_commit, &base_commit, 0, None)
             .context("Cherry picking directly on master")?;
 
         let parent_commit = pr_head.unwrap_or(base_commit);
@@ -203,14 +206,14 @@ impl GitRepo {
             if parent_commit.id() == self.base_commit_id {
                 Ok(Some(self.commit_index(
                     index,
-                    &original_commit,
+                    original_commit,
                     parent_commit.id(),
                     original_commit.message().expect("No commit message"),
                 )?))
             } else {
                 Ok(Some(self.commit_index(
                     index,
-                    &original_commit,
+                    original_commit,
                     parent_commit.id(),
                     &format!("Fixup! {}", parent_commit.id()),
                 )?))
@@ -262,6 +265,80 @@ impl GitRepo {
             .commit(None, &author, &committer, message, &tree, &[&base_commit])
             .context("Committing")?;
         Ok(self.repo.find_commit(cherry_picked_commit)?)
+    }
+
+    pub fn update(&self, commit: Commit) -> anyhow::Result<()> {
+        let note = self.find_note_for_commit(commit.id())?;
+        let commit_meta_data: CommitMetadata = note
+            .as_ref()
+            .and_then(|n| n.message().expect("Not valid UTF-8").try_into().ok())
+            .unwrap();
+
+        //Add local changes first.
+        let base_commit = self.base_commit()?;
+        let base_commit = {
+            let remote_commit_id = commit_meta_data.remote_commit.unwrap(); //TODO: Handle the case
+                                                                            //where it's not there.
+            let remote_commit = self.repo.find_commit(remote_commit_id)?;
+            self.cherry_pick_commit(&commit, Some(remote_commit))?
+        }
+        .unwrap_or(base_commit);
+
+        //Update "local" version of remote with the actual remote
+        let new_remote_commit = {
+            let remote_branch = self
+                .repo
+                .find_branch(
+                    &format!("origin/{}", commit_meta_data.remote_branch_name),
+                    git2::BranchType::Remote,
+                )
+                .context("Find the remote branch")?;
+            let remote_commit = remote_branch.get().peel_to_commit()?;
+            let mut remote_index = self
+                .repo
+                .merge_commits(&base_commit, &remote_commit, None)?;
+            if remote_index.has_conflicts() {
+                anyhow::bail!("Index has conflicts");
+            }
+            let tree = remote_index
+                .write_tree_to(&self.repo)
+                .context("write index to tree")?;
+            let oid = self.repo.commit(
+                None,
+                &self.repo.signature().context("No signature")?,
+                &self.repo.signature()?,
+                "Merge",
+                &self.repo.find_tree(tree)?,
+                &[&base_commit, &remote_commit],
+            )?;
+            self.repo.find_commit(oid)?
+        };
+
+        let new_remote_tree = new_remote_commit.tree()?;
+        let parent = commit.parent(0)?; //TODO: Can we really hardcode '0' here?
+        let diff =
+            self.repo
+                .diff_tree_to_tree(Some(&parent.tree()?), Some(&new_remote_tree), None)?;
+
+        let index = self.repo.apply_to_tree(&parent.tree()?, &diff, None)?;
+
+        let new_commit = self.commit_index(
+            index,
+            &commit,
+            parent.id(),
+            commit.message().expect("Not valid UTF-8 message"),
+        )?;
+
+        self.repo
+            .set_head_detached(new_commit.id())
+            .context("Detach HEAD before moving the main branch")?;
+        self.repo
+            .branch(&self.current_branch_name, &new_commit, true)
+            .context("Moving the main branch pointer")?;
+        self.repo
+            .set_head(&format!("refs/heads/{}", self.current_branch_name))
+            .context("Moving HEAD back to main branch")?;
+        Ok(())
     }
 }
 

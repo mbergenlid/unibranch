@@ -17,7 +17,6 @@ enum Commands {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    let _a = 32;
     match cli.command {
         Commands::CherryPick(config) => cherry_pick::execute(config, ".")?,
         Commands::Push => push::execute(".")?,

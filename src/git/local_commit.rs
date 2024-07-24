@@ -1,6 +1,6 @@
 use std::{borrow::Cow, error::Error, fmt::Display};
 
-use git2::Commit;
+use git2::{Commit, Oid};
 use itertools::Itertools;
 
 pub struct LocalCommit<'repo> {
@@ -20,6 +20,7 @@ impl<'repo> LocalCommit<'repo> {
 #[derive(Debug, Eq, PartialEq)]
 pub struct CommitMetadata<'a> {
     pub remote_branch_name: Cow<'a, str>,
+    pub remote_commit: Option<Oid>,
 }
 
 impl<'a> CommitMetadata<'a> {
@@ -33,7 +34,11 @@ impl<'a> CommitMetadata<'a> {
 
 impl<'a> Display for CommitMetadata<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("remote-branch: {}\n", self.remote_branch_name))
+        f.write_fmt(format_args!("remote-branch: {}\n", self.remote_branch_name))?;
+        if let Some(remote_commit) = self.remote_commit {
+            f.write_fmt(format_args!("remote-commit: {}\n", remote_commit))?;
+        };
+        Ok(())
     }
 }
 
@@ -51,18 +56,23 @@ impl Error for MetaDataError {}
 impl<'a> TryFrom<&'a str> for CommitMetadata<'a> {
     type Error = MetaDataError;
 
+    //Implement this using parse..
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
         let mut remote_branch_name = None;
+        let mut remote_commit_id = None;
         for line in value.lines() {
             if let Some((key, value)) = line.splitn(2, ':').collect_tuple() {
                 if key == "remote-branch" {
                     remote_branch_name = Some(value.trim());
+                } else if key == "remote-commit" {
+                    remote_commit_id = value.trim().parse::<Oid>().ok();
                 }
             }
         }
         remote_branch_name
             .map(|name| CommitMetadata {
                 remote_branch_name: Cow::Borrowed(name),
+                remote_commit: remote_commit_id,
             })
             .ok_or(MetaDataError)
     }
@@ -86,7 +96,8 @@ mod test {
         assert_eq!(
             meta_data,
             CommitMetadata {
-                remote_branch_name: Cow::Borrowed("branch_name")
+                remote_branch_name: Cow::Borrowed("branch_name"),
+                remote_commit: None
             }
         )
     }
@@ -99,5 +110,37 @@ mod test {
 
         let meta_data = TryInto::<CommitMetadata>::try_into(commit_msg);
         assert!(meta_data.is_err())
+    }
+
+    #[test]
+    fn test_parse_with_remote_commit() {
+        let msg = indoc! {"
+            remote-branch: branch_name
+            remote-commit: 6ec67b364e67bbd74c66fc8f0cbb95e6ac155d84
+        "};
+        let meta_data = TryInto::<CommitMetadata>::try_into(msg).unwrap();
+        assert_eq!(
+            meta_data,
+            CommitMetadata {
+                remote_branch_name: Cow::Borrowed("branch_name"),
+                remote_commit: Some("6ec67b364e67bbd74c66fc8f0cbb95e6ac155d84".parse().unwrap()),
+            }
+        )
+    }
+
+    #[test]
+    fn test_parse_with_invalid_remote_commit() {
+        let msg = indoc! {"
+            remote-branch: branch_name
+            remote-commit: Invalid
+        "};
+        let meta_data = TryInto::<CommitMetadata>::try_into(msg).unwrap();
+        assert_eq!(
+            meta_data,
+            CommitMetadata {
+                remote_branch_name: Cow::Borrowed("branch_name"),
+                remote_commit: None,
+            }
+        )
     }
 }

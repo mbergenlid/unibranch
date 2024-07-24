@@ -5,4 +5,7 @@
 * ✅ Can't apply upstream changes as fixup commit
 * Binary files
 * Dependant changes
-* Non utf-8 commit messages
+
+* Implement 'pick' command --> Pick a remote branch and bring it into a virtual branch
+* Implement 'pull' command
+
