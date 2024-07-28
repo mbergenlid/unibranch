@@ -1,8 +1,7 @@
 mod common;
 use common::RemoteRepo;
 
-use sc::commands::cherry_pick;
-use sc::git::GitRepo;
+use sc::commands::{cherry_pick, pull};
 
 use indoc::indoc;
 use pretty_assertions::assert_eq;
@@ -17,8 +16,6 @@ fn update_commit_from_remote() {
         .push()
         .append_file("File1", "Some more changes")
         .commit_all("pr commit");
-
-    let repo = GitRepo::open(local_repo.local_repo_dir.path()).unwrap();
 
     //Create a PR from local repo
     cherry_pick::execute(
@@ -39,24 +36,7 @@ fn update_commit_from_remote() {
         .commit_all("Fixup")
         .push();
 
-    let local_repo = local_repo.fetch();
-    let origin_diff = String::from_utf8(local_repo.diff("origin/pr-commit", "HEAD^").stdout)
-        .expect("Getting diff");
-    assert_eq!(
-        origin_diff,
-        indoc! {"
-            diff --git a/File1 b/File1
-            index 6a56b5e..8ab686e 100644
-            --- a/File1
-            +++ b/File1
-            @@ -1,3 +1 @@
-             Hello, World!
-            -Some more changes
-            -Remote fixes
-        "}
-    );
-
-    repo.update(local_repo.find_commit(0)).unwrap();
+    pull::execute(&local_repo.local_repo_dir).expect("Error while running pull command");
 
     let local_commit_diff =
         String::from_utf8(local_repo.diff("master", "master^").stdout).expect("Getting diff");
@@ -88,8 +68,6 @@ fn update_commit_from_remote_with_local_changes() {
         .push()
         .append_file("File1", "Some more changes")
         .commit_all("pr commit");
-
-    let repo = GitRepo::open(local_repo.local_repo_dir.path()).unwrap();
 
     //Create a PR from local repo
     cherry_pick::execute(
@@ -140,11 +118,7 @@ fn update_commit_from_remote_with_local_changes() {
     );
 
     //Perform the actual update
-    let local_repo = {
-        let local_repo = local_repo.fetch();
-        repo.update(local_repo.find_commit(0)).unwrap();
-        local_repo
-    };
+    pull::execute(&local_repo.local_repo_dir).expect("Unable to perform pull command");
 
     let local_commit_diff =
         String::from_utf8(local_repo.diff("master^", "master").stdout).expect("Getting diff");
