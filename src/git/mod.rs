@@ -49,6 +49,27 @@ impl GitRepo {
         })
     }
 
+    pub fn find_local_branch_commit(&self, local_commit: &Commit) -> anyhow::Result<Commit> {
+        let note = self.find_note_for_commit(local_commit.id())?;
+        let commit_meta_data: CommitMetadata = note
+            .as_ref()
+            .and_then(|n| n.message().expect("Not valid UTF-8").try_into().ok())
+            .unwrap();
+
+        let local_branch_commit = if let Some(remote_commit_id) = commit_meta_data.remote_commit {
+            self.repo.find_commit(remote_commit_id)?
+        } else {
+            self.repo
+                .find_branch(
+                    &format!("origin/{}", commit_meta_data.remote_branch_name),
+                    git2::BranchType::Remote,
+                )?
+                .get()
+                .peel_to_commit()?
+        };
+        Ok(local_branch_commit)
+    }
+
     pub fn base_commit(&self) -> anyhow::Result<Commit> {
         Ok(self.repo.find_commit(self.base_commit_id)?)
     }
@@ -267,22 +288,19 @@ impl GitRepo {
         Ok(self.repo.find_commit(cherry_picked_commit)?)
     }
 
-    pub fn update(&self, commit: Commit) -> anyhow::Result<()> {
-        let note = self.find_note_for_commit(commit.id())?;
+    pub fn update(
+        &self,
+        original_commit: Commit,
+        local_branch_head: &Commit,
+    ) -> anyhow::Result<()> {
+        let note = self.find_note_for_commit(original_commit.id())?;
         let commit_meta_data: CommitMetadata = note
             .as_ref()
             .and_then(|n| n.message().expect("Not valid UTF-8").try_into().ok())
             .unwrap();
 
         //Add local changes first.
-        let base_commit = self.base_commit()?;
-        let base_commit = {
-            let remote_commit_id = commit_meta_data.remote_commit.unwrap(); //TODO: Handle the case
-                                                                            //where it's not there.
-            let remote_commit = self.repo.find_commit(remote_commit_id)?;
-            self.cherry_pick_commit(&commit, Some(remote_commit))?
-        }
-        .unwrap_or(base_commit);
+        let base_commit = local_branch_head;
 
         //Update "local" version of remote with the actual remote
         let new_remote_commit = {
@@ -294,9 +312,7 @@ impl GitRepo {
                 )
                 .context("Find the remote branch")?;
             let remote_commit = remote_branch.get().peel_to_commit()?;
-            let mut remote_index = self
-                .repo
-                .merge_commits(&base_commit, &remote_commit, None)?;
+            let mut remote_index = self.repo.merge_commits(base_commit, &remote_commit, None)?;
             if remote_index.has_conflicts() {
                 anyhow::bail!("Index has conflicts");
             }
@@ -309,13 +325,13 @@ impl GitRepo {
                 &self.repo.signature()?,
                 "Merge",
                 &self.repo.find_tree(tree)?,
-                &[&base_commit, &remote_commit],
+                &[base_commit, &remote_commit],
             )?;
             self.repo.find_commit(oid)?
         };
 
         let new_remote_tree = new_remote_commit.tree()?;
-        let parent = commit.parent(0)?; //TODO: Can we really hardcode '0' here?
+        let parent = original_commit.parent(0)?; //TODO: Can we really hardcode '0' here?
         let diff =
             self.repo
                 .diff_tree_to_tree(Some(&parent.tree()?), Some(&new_remote_tree), None)?;
@@ -324,9 +340,9 @@ impl GitRepo {
 
         let new_commit = self.commit_index(
             index,
-            &commit,
+            &original_commit,
             parent.id(),
-            commit.message().expect("Not valid UTF-8 message"),
+            original_commit.message().expect("Not valid UTF-8 message"),
         )?;
 
         self.repo
