@@ -298,6 +298,18 @@ impl<'a> TestRepoWithRemote<'a> {
     }
 
     #[allow(dead_code)]
+    pub fn show(&self, rev: &str) {
+        let current_dir = self.local_repo_dir.path();
+        let out = String::from_utf8(Command::new("git")
+            .current_dir(current_dir)
+            .arg("show")
+            .arg(rev)
+            .output()
+            .unwrap().stdout).expect("git show is not valid UTF-8");
+        println!("{}", out);
+    }
+
+    #[allow(dead_code)]
     pub fn find_note(&self, rev: &str) -> String {
         let current_dir = self.local_repo_dir.path();
 

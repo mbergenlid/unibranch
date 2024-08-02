@@ -1,4 +1,5 @@
 mod common;
+
 use common::RemoteRepo;
 
 use sc::commands::{cherry_pick, pull};
@@ -145,4 +146,91 @@ fn update_commit_from_remote_with_local_changes() {
     );
 
     assert_eq!(local_repo.head_branch(), "master");
+}
+
+#[test]
+fn sync_multiple_commits() {
+    let remote_repo = RemoteRepo::new();
+    let local_repo = remote_repo
+        .clone()
+        .create_file("File1", "Hello, World!")
+        .commit_all("commit1")
+        .push()
+        .append_file("File1", "Some more changes")
+        .commit_all("first pr")
+        .create_file("File2", "Unrelated feature")
+        .commit_all("second pr");
+
+    //second pr
+    cherry_pick::execute(
+        cherry_pick::Options {
+            dry_run: false,
+            rebase: false,
+            commit_ref: Some("HEAD".to_string()),
+        },
+        &local_repo.local_repo_dir,
+    ).unwrap();
+
+    //first pr
+    cherry_pick::execute(
+        cherry_pick::Options {
+            dry_run: false,
+            rebase: false,
+            commit_ref: Some("HEAD^".to_string()),
+        },
+        &local_repo.local_repo_dir,
+    ).unwrap();
+
+
+    let another_local_clone = remote_repo.clone();
+
+    let another_local_clone = another_local_clone
+        .checkout("first-pr")
+        .append_file("File1", "Remote fixes")
+        .commit_all("Fixup")
+        .push();
+    let _another_local_clone = another_local_clone
+        .checkout("second-pr")
+        .append_file("File2", "Remote fixes")
+        .commit_all("Fixup")
+        .push()
+        .show("HEAD^");
+
+
+    pull::execute(&local_repo.local_repo_dir).unwrap();
+
+    let second_pr_diff =
+        String::from_utf8(local_repo.diff("master^", "master").stdout).expect("Getting diff");
+    assert_eq!(
+        second_pr_diff,
+        indoc! {"
+            diff --git a/File2 b/File2
+            new file mode 100644
+            index 0000000..d9e3866
+            --- /dev/null
+            +++ b/File2
+            @@ -0,0 +1,2 @@
+            +Unrelated feature
+            +Remote fixes
+        "},
+        "Local 'master' of second commit hasn't been updated with the remote changes"
+    );
+
+    let first_pr_diff =
+        String::from_utf8(local_repo.diff("master^^", "master^").stdout).expect("Getting diff");
+    assert_eq!(
+        first_pr_diff,
+        indoc! {"
+            diff --git a/File1 b/File1
+            index 8ab686e..6a56b5e 100644
+            --- a/File1
+            +++ b/File1
+            @@ -1 +1,3 @@
+             Hello, World!
+            +Some more changes
+            +Remote fixes
+        "},
+        "Local 'master' of first commit hasn't been updated with the remote changes"
+    );
+
 }

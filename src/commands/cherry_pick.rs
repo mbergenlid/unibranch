@@ -85,8 +85,8 @@ where
                 ));
 
             let _exit_status = cmd
-                .stderr(Stdio::inherit())
-                .stdout(Stdio::inherit())
+                .stderr(Stdio::null())
+                .stdout(Stdio::null())
                 .spawn()?
                 .wait()?;
         }

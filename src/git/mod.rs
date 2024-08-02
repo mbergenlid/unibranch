@@ -182,6 +182,15 @@ impl GitRepo {
         Ok(())
     }
 
+    pub fn unpushed_commits(&self) -> anyhow::Result<Vec<Commit>> {
+        let mut walk = self.repo.revwalk()?;
+        walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
+        walk.push_head()?;
+        walk.hide(self.base_commit_id)?;
+
+        Ok(walk.map(|r| self.repo.find_commit(r.expect("whhat")).unwrap()).collect())
+    }
+
     pub fn cherry_pick_commit(
         &self,
         original_commit: &Commit,
@@ -292,7 +301,8 @@ impl GitRepo {
         &self,
         original_commit: Commit,
         local_branch_head: &Commit,
-    ) -> anyhow::Result<()> {
+        new_parent: &Commit,
+    ) -> anyhow::Result<Commit> {
         let note = self.find_note_for_commit(original_commit.id())?;
         let commit_meta_data: CommitMetadata = note
             .as_ref()
@@ -316,6 +326,9 @@ impl GitRepo {
             if remote_index.has_conflicts() {
                 anyhow::bail!("Index has conflicts");
             }
+            if remote_index.is_empty() {
+                anyhow::bail!("Index is empty");
+            }
             let tree = remote_index
                 .write_tree_to(&self.repo)
                 .context("write index to tree")?;
@@ -331,17 +344,17 @@ impl GitRepo {
         };
 
         let new_remote_tree = new_remote_commit.tree()?;
-        let parent = original_commit.parent(0)?; //TODO: Can we really hardcode '0' here?
         let diff =
             self.repo
-                .diff_tree_to_tree(Some(&parent.tree()?), Some(&new_remote_tree), None)?;
+                .diff_tree_to_tree(Some(&self.base_commit()?.tree()?), Some(&new_remote_tree), None)?;
 
-        let index = self.repo.apply_to_tree(&parent.tree()?, &diff, None)?;
+        let index = self.repo.apply_to_tree(&new_parent.tree()?, &diff, None)?;
 
+        // TODO: make sure the note follows.
         let new_commit = self.commit_index(
             index,
             &original_commit,
-            parent.id(),
+            new_parent.id(),
             original_commit.message().expect("Not valid UTF-8 message"),
         )?;
 
@@ -354,7 +367,7 @@ impl GitRepo {
         self.repo
             .set_head(&format!("refs/heads/{}", self.current_branch_name))
             .context("Moving HEAD back to main branch")?;
-        Ok(())
+        Ok(new_commit)
     }
 }
 

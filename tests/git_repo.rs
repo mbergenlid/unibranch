@@ -1,9 +1,8 @@
 mod common;
 
 use common::{RemoteRepo, TestRepoWithRemote};
-use indoc::indoc;
 use pretty_assertions::assert_eq;
-use sc::{commands::cherry_pick, git::GitRepo};
+use sc::git::GitRepo;
 
 fn init_repo(remote: &RemoteRepo) -> TestRepoWithRemote {
     let test_repo = remote.clone();
