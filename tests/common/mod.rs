@@ -8,6 +8,7 @@ use std::{
 
 use git2::{Commit, Oid};
 use pretty_assertions::assert_eq;
+use sc::git::local_commit::CommitMetadata;
 use tempfile::{tempdir, TempDir};
 
 pub struct RemoteRepo {
@@ -300,12 +301,16 @@ impl<'a> TestRepoWithRemote<'a> {
     #[allow(dead_code)]
     pub fn show(&self, rev: &str) {
         let current_dir = self.local_repo_dir.path();
-        let out = String::from_utf8(Command::new("git")
-            .current_dir(current_dir)
-            .arg("show")
-            .arg(rev)
-            .output()
-            .unwrap().stdout).expect("git show is not valid UTF-8");
+        let out = String::from_utf8(
+            Command::new("git")
+                .current_dir(current_dir)
+                .arg("show")
+                .arg(rev)
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .expect("git show is not valid UTF-8");
         println!("{}", out);
     }
 
@@ -367,5 +372,16 @@ impl<'a> TestRepoWithRemote<'a> {
             let actual_message = local_commit.message().unwrap();
             assert_eq!(actual_message, expected_message);
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn assert_note(&self, rev: &str, expected_note: &CommitMetadata) {
+        let note = self.find_note(rev);
+        assert_eq!(
+            note,
+            format!("{}", expected_note),
+            "comparing note for commit {}",
+            rev
+        )
     }
 }

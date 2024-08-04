@@ -4,7 +4,7 @@ use anyhow::{Context, Ok};
 use clap::builder::OsStr;
 use git2::{Commit, Index, Note, Oid, Repository, RepositoryOpenFlags};
 
-use self::local_commit::CommitMetadata;
+use self::local_commit::{CommitMetadata, MainCommit};
 
 pub mod local_commit;
 
@@ -104,6 +104,31 @@ impl GitRepo {
         Ok(commit)
     }
 
+    pub fn find_meta_data_for_commit(
+        &self,
+        commit_id: Oid,
+    ) -> anyhow::Result<Option<CommitMetadata>> {
+        if let Some(note) = self.find_note_for_commit(commit_id)? {
+            if let Some(msg) = note.message() {
+                let mut commit_meta_data: CommitMetadata = msg.parse()?;
+                if commit_meta_data.remote_commit.is_none() {
+                    let id = self
+                        .repo
+                        .find_branch(
+                            &format!("origin/{}", commit_meta_data.remote_branch_name),
+                            git2::BranchType::Remote,
+                        )?
+                        .get()
+                        .peel_to_commit()?
+                        .id();
+                    commit_meta_data.remote_commit.replace(id);
+                }
+                return Ok(Some(commit_meta_data));
+            }
+        }
+        Ok(None)
+    }
+
     pub fn find_note_for_commit(&self, commit_id: Oid) -> anyhow::Result<Option<Note>> {
         let res = self.repo.find_note(None, commit_id);
         if let Err(error) = res {
@@ -182,13 +207,17 @@ impl GitRepo {
         Ok(())
     }
 
-    pub fn unpushed_commits(&self) -> anyhow::Result<Vec<Commit>> {
+    pub fn unpushed_commits(&self) -> anyhow::Result<Vec<MainCommit>> {
         let mut walk = self.repo.revwalk()?;
         walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
         walk.push_head()?;
         walk.hide(self.base_commit_id)?;
 
-        Ok(walk.map(|r| self.repo.find_commit(r.expect("whhat")).unwrap()).collect())
+        let result: Result<Vec<_>, _> = walk
+            .map(|r| self.repo.find_commit(r.expect("whhat")).unwrap())
+            .map(|c| MainCommit::new(self, &self.repo, c))
+            .collect();
+        Ok(result?)
     }
 
     pub fn cherry_pick_commit(
@@ -297,77 +326,18 @@ impl GitRepo {
         Ok(self.repo.find_commit(cherry_picked_commit)?)
     }
 
-    pub fn update(
-        &self,
-        original_commit: Commit,
-        local_branch_head: &Commit,
-        new_parent: &Commit,
-    ) -> anyhow::Result<Commit> {
-        let note = self.find_note_for_commit(original_commit.id())?;
-        let commit_meta_data: CommitMetadata = note
-            .as_ref()
-            .and_then(|n| n.message().expect("Not valid UTF-8").try_into().ok())
-            .unwrap();
 
-        //Add local changes first.
-        let base_commit = local_branch_head;
-
-        //Update "local" version of remote with the actual remote
-        let new_remote_commit = {
-            let remote_branch = self
-                .repo
-                .find_branch(
-                    &format!("origin/{}", commit_meta_data.remote_branch_name),
-                    git2::BranchType::Remote,
-                )
-                .context("Find the remote branch")?;
-            let remote_commit = remote_branch.get().peel_to_commit()?;
-            let mut remote_index = self.repo.merge_commits(base_commit, &remote_commit, None)?;
-            if remote_index.has_conflicts() {
-                anyhow::bail!("Index has conflicts");
-            }
-            if remote_index.is_empty() {
-                anyhow::bail!("Index is empty");
-            }
-            let tree = remote_index
-                .write_tree_to(&self.repo)
-                .context("write index to tree")?;
-            let oid = self.repo.commit(
-                None,
-                &self.repo.signature().context("No signature")?,
-                &self.repo.signature()?,
-                "Merge",
-                &self.repo.find_tree(tree)?,
-                &[base_commit, &remote_commit],
-            )?;
-            self.repo.find_commit(oid)?
-        };
-
-        let new_remote_tree = new_remote_commit.tree()?;
-        let diff =
-            self.repo
-                .diff_tree_to_tree(Some(&self.base_commit()?.tree()?), Some(&new_remote_tree), None)?;
-
-        let index = self.repo.apply_to_tree(&new_parent.tree()?, &diff, None)?;
-
-        // TODO: make sure the note follows.
-        let new_commit = self.commit_index(
-            index,
-            &original_commit,
-            new_parent.id(),
-            original_commit.message().expect("Not valid UTF-8 message"),
-        )?;
-
+    pub fn update_current_branch(&self, new_head: &Commit) -> anyhow::Result<()> {
         self.repo
-            .set_head_detached(new_commit.id())
+            .set_head_detached(new_head.id())
             .context("Detach HEAD before moving the main branch")?;
         self.repo
-            .branch(&self.current_branch_name, &new_commit, true)
+            .branch(&self.current_branch_name, new_head, true)
             .context("Moving the main branch pointer")?;
         self.repo
             .set_head(&format!("refs/heads/{}", self.current_branch_name))
             .context("Moving HEAD back to main branch")?;
-        Ok(new_commit)
+        Ok(())
     }
 }
 

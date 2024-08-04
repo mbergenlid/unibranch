@@ -2,7 +2,10 @@ mod common;
 
 use common::RemoteRepo;
 
-use sc::commands::{cherry_pick, pull};
+use sc::{
+    commands::{cherry_pick, pull},
+    git::local_commit::CommitMetadata,
+};
 
 use indoc::indoc;
 use pretty_assertions::assert_eq;
@@ -31,7 +34,7 @@ fn update_commit_from_remote() {
 
     let another_local_clone = remote_repo.clone();
 
-    let _another_local_clone = another_local_clone
+    let another_local_clone = another_local_clone
         .checkout("pr-commit")
         .append_file("File1", "Remote fixes")
         .commit_all("Fixup")
@@ -57,6 +60,19 @@ fn update_commit_from_remote() {
     );
 
     assert_eq!(local_repo.head_branch(), "master");
+
+    local_repo.assert_note(
+        "HEAD",
+        &CommitMetadata {
+            remote_branch_name: std::borrow::Cow::Owned("pr-commit".to_string()),
+            remote_commit: Some(
+                another_local_clone
+                    .rev_parse("pr-commit")
+                    .parse()
+                    .expect("Not a valid object id"),
+            ),
+        },
+    );
 }
 
 #[test]
@@ -146,6 +162,19 @@ fn update_commit_from_remote_with_local_changes() {
     );
 
     assert_eq!(local_repo.head_branch(), "master");
+
+    local_repo.assert_note(
+        "HEAD",
+        &CommitMetadata {
+            remote_branch_name: std::borrow::Cow::Owned("pr-commit".to_string()),
+            remote_commit: Some(
+                local_repo
+                    .rev_parse("origin/pr-commit")
+                    .parse()
+                    .expect("Not a valid object id"),
+            ),
+        },
+    );
 }
 
 #[test]
@@ -169,7 +198,8 @@ fn sync_multiple_commits() {
             commit_ref: Some("HEAD".to_string()),
         },
         &local_repo.local_repo_dir,
-    ).unwrap();
+    )
+    .unwrap();
 
     //first pr
     cherry_pick::execute(
@@ -179,8 +209,8 @@ fn sync_multiple_commits() {
             commit_ref: Some("HEAD^".to_string()),
         },
         &local_repo.local_repo_dir,
-    ).unwrap();
-
+    )
+    .unwrap();
 
     let another_local_clone = remote_repo.clone();
 
@@ -195,7 +225,6 @@ fn sync_multiple_commits() {
         .commit_all("Fixup")
         .push()
         .show("HEAD^");
-
 
     pull::execute(&local_repo.local_repo_dir).unwrap();
 
@@ -232,5 +261,4 @@ fn sync_multiple_commits() {
         "},
         "Local 'master' of first commit hasn't been updated with the remote changes"
     );
-
 }
