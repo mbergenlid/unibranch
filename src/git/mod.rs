@@ -85,7 +85,7 @@ impl GitRepo {
             .and_then(|b| b.get().peel_to_commit().ok())
     }
 
-    pub fn find_unpushed_commit(&self, commit_ref: &str) -> anyhow::Result<Commit> {
+    pub fn find_unpushed_commit(&self, commit_ref: &str) -> anyhow::Result<MainCommit> {
         let (obj, _) = self
             .repo
             .revparse_ext(commit_ref)
@@ -101,7 +101,7 @@ impl GitRepo {
             ));
         }
 
-        Ok(commit)
+        Ok(MainCommit::new(self, &self.repo, commit)?)
     }
 
     pub fn find_meta_data_for_commit(

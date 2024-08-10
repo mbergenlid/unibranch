@@ -89,6 +89,19 @@ impl<'a> TestRepoWithRemote<'a> {
         self
     }
 
+    #[allow(dead_code)]
+    pub fn run_command(&self) -> Command {
+        let current_dir = self.local_repo_dir.path();
+        let mut command = Command::new("git");
+
+        command
+            .current_dir(current_dir)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+
+        return command;
+    }
+
     pub fn create_file<P>(self, path: P, content: &str) -> Self
     where
         P: AsRef<Path>,

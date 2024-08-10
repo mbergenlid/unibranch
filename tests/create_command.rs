@@ -1,5 +1,6 @@
 mod common;
 
+
 use common::RemoteRepo;
 use git2::Oid;
 use indoc::indoc;
@@ -10,7 +11,6 @@ use pretty_assertions::assert_eq;
 fn create_options(commit_ref: Option<Oid>) -> create::Options {
     create::Options {
         dry_run: false,
-        rebase: false,
         commit_ref: commit_ref.map(|id| format!("{}", id)),
     }
 }
@@ -122,4 +122,51 @@ fn test_create_from_not_head_commit() {
         1,
     );
     assert_eq!(repo.find_note("head^"), expected_note,);
+}
+
+#[test]
+fn should_not_be_able_to_call_create_for_same_commit_twice() {
+    let remote = RemoteRepo::new();
+    let repo = remote.clone();
+
+    let repo = repo
+        .create_file("File1", "Hello world!")
+        .commit_all("commit1")
+        .push();
+
+    let repo = repo
+        .append_file("File1", "Another Hello, World!")
+        .commit_all("commit2");
+
+    let current_dir = repo.local_repo_dir.path();
+
+    create::execute(create_options(None), current_dir).unwrap();
+
+    let result = create::execute(create_options(None), current_dir);
+    assert!(result.is_err());
+}
+
+#[test]
+fn should_fail_if_remote_branch_already_exists() {
+    let remote = RemoteRepo::new();
+    let repo = remote.clone();
+
+    let repo = repo
+        .create_file("File1", "Hello world!")
+        .commit_all("commit1")
+        .push();
+
+    let repo = repo
+        .append_file("File1", "Another Hello, World!")
+        .commit_all("commit2");
+
+    create::execute(create_options(None), repo.local_repo_dir.path()).unwrap();
+
+    let repo = repo
+        .create_file("File2", "Another Hello, World!")
+        .commit_all("commit2");
+
+    let result = create::execute(create_options(None), repo.local_repo_dir.path());
+    assert!(result.is_err());
+    assert_eq!(format!("{}", result.unwrap_err()), "Remote branch 'commit2' already exist");
 }

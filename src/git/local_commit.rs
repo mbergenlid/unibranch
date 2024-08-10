@@ -49,6 +49,13 @@ impl<'repo> MainCommit<'repo> {
             }))
         }
     }
+
+    pub fn id(&self) -> Oid {
+        match self {
+            MainCommit::UnTracked(c) => c.commit.id(),
+            MainCommit::Tracked(c) => c.commit.id(),
+        }
+    }
 }
 
 pub struct LocalCommit<'repo> {
@@ -76,7 +83,7 @@ impl<'repo> LocalCommit<'repo> {
     pub(crate) fn rebase(self, parent_commit: &Commit<'_>) -> anyhow::Result<Self> {
         let index = self
             .repo
-            .cherrypick_commit(self.as_commit(), &parent_commit, 0, None)?;
+            .cherrypick_commit(self.as_commit(), parent_commit, 0, None)?;
         let new_commit = self.git_repo.commit_index(
             index,
             self.as_commit(),

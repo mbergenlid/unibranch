@@ -10,7 +10,6 @@ use crate::common::RemoteRepo;
 fn push_options(commit_ref: Option<Oid>) -> create::Options {
     create::Options {
         dry_run: false,
-        rebase: false,
         commit_ref: commit_ref.map(|id| format!("{}", id)),
     }
 }

@@ -25,7 +25,6 @@ fn update_commit_from_remote() {
     create::execute(
         create::Options {
             dry_run: false,
-            rebase: false,
             commit_ref: Some("HEAD".to_string()),
         },
         &local_repo.local_repo_dir,
@@ -90,7 +89,6 @@ fn update_commit_from_remote_with_local_changes() {
     create::execute(
         create::Options {
             dry_run: false,
-            rebase: false,
             commit_ref: Some("HEAD".to_string()),
         },
         &local_repo.local_repo_dir,
@@ -194,7 +192,6 @@ fn sync_multiple_commits() {
     create::execute(
         create::Options {
             dry_run: false,
-            rebase: false,
             commit_ref: Some("HEAD".to_string()),
         },
         &local_repo.local_repo_dir,
@@ -205,7 +202,6 @@ fn sync_multiple_commits() {
     create::execute(
         create::Options {
             dry_run: false,
-            rebase: false,
             commit_ref: Some("HEAD^".to_string()),
         },
         &local_repo.local_repo_dir,
