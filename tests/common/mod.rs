@@ -8,7 +8,7 @@ use std::{
 
 use git2::{Commit, Oid};
 use pretty_assertions::assert_eq;
-use sc::git::local_commit::CommitMetadata;
+use ubr::git::local_commit::CommitMetadata;
 use tempfile::{tempdir, TempDir};
 
 pub struct RemoteRepo {

@@ -2,7 +2,7 @@ mod common;
 
 use common::RemoteRepo;
 
-use sc::{
+use ubr::{
     commands::{create, pull},
     git::local_commit::CommitMetadata,
 };

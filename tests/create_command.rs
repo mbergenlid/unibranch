@@ -4,7 +4,7 @@ mod common;
 use common::RemoteRepo;
 use git2::Oid;
 use indoc::indoc;
-use sc::commands::create;
+use ubr::commands::create;
 
 use pretty_assertions::assert_eq;
 

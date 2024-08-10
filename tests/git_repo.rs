@@ -2,7 +2,7 @@ mod common;
 
 use common::{RemoteRepo, TestRepoWithRemote};
 use pretty_assertions::assert_eq;
-use sc::git::GitRepo;
+use ubr::git::GitRepo;
 
 fn init_repo(remote: &RemoteRepo) -> TestRepoWithRemote {
     let test_repo = remote.clone();

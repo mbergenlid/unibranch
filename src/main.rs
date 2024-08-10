@@ -1,5 +1,5 @@
 use clap::{command, Parser, Subcommand};
-use sc::commands::{create, pull, push};
+use ubr::commands::{create, pull, push};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]

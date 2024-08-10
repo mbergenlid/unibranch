@@ -3,7 +3,7 @@ mod common;
 use git2::Oid;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use sc::commands::{create, pull};
+use ubr::commands::{create, pull};
 
 use crate::common::RemoteRepo;
 
