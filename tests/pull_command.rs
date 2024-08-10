@@ -3,7 +3,7 @@ mod common;
 use common::RemoteRepo;
 
 use sc::{
-    commands::{cherry_pick, pull},
+    commands::{create, pull},
     git::local_commit::CommitMetadata,
 };
 
@@ -22,8 +22,8 @@ fn update_commit_from_remote() {
         .commit_all("pr commit");
 
     //Create a PR from local repo
-    cherry_pick::execute(
-        cherry_pick::Options {
+    create::execute(
+        create::Options {
             dry_run: false,
             rebase: false,
             commit_ref: Some("HEAD".to_string()),
@@ -87,8 +87,8 @@ fn update_commit_from_remote_with_local_changes() {
         .commit_all("pr commit");
 
     //Create a PR from local repo
-    cherry_pick::execute(
-        cherry_pick::Options {
+    create::execute(
+        create::Options {
             dry_run: false,
             rebase: false,
             commit_ref: Some("HEAD".to_string()),
@@ -191,8 +191,8 @@ fn sync_multiple_commits() {
         .commit_all("second pr");
 
     //second pr
-    cherry_pick::execute(
-        cherry_pick::Options {
+    create::execute(
+        create::Options {
             dry_run: false,
             rebase: false,
             commit_ref: Some("HEAD".to_string()),
@@ -202,8 +202,8 @@ fn sync_multiple_commits() {
     .unwrap();
 
     //first pr
-    cherry_pick::execute(
-        cherry_pick::Options {
+    create::execute(
+        create::Options {
             dry_run: false,
             rebase: false,
             commit_ref: Some("HEAD^".to_string()),

@@ -326,7 +326,6 @@ impl GitRepo {
         Ok(self.repo.find_commit(cherry_picked_commit)?)
     }
 
-
     pub fn update_current_branch(&self, new_head: &Commit) -> anyhow::Result<()> {
         self.repo
             .set_head_detached(new_head.id())

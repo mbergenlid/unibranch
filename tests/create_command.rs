@@ -3,12 +3,12 @@ mod common;
 use common::RemoteRepo;
 use git2::Oid;
 use indoc::indoc;
-use sc::commands::cherry_pick;
+use sc::commands::create;
 
 use pretty_assertions::assert_eq;
 
-fn push_options(commit_ref: Option<Oid>) -> cherry_pick::Options {
-    cherry_pick::Options {
+fn create_options(commit_ref: Option<Oid>) -> create::Options {
+    create::Options {
         dry_run: false,
         rebase: false,
         commit_ref: commit_ref.map(|id| format!("{}", id)),
@@ -35,7 +35,7 @@ fn basic_test() {
 
     let current_dir = repo.local_repo_dir.path();
 
-    cherry_pick::execute(push_options(None), current_dir).unwrap();
+    create::execute(create_options(None), current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit3");
     assert!(!remote_head.stdout.is_empty());
@@ -70,7 +70,7 @@ fn basic_test() {
 }
 
 #[test]
-fn test_diff_from_not_head_commit() {
+fn test_create_from_not_head_commit() {
     let remote = RemoteRepo::new();
     let repo = remote.clone();
 
@@ -90,7 +90,7 @@ fn test_diff_from_not_head_commit() {
     let current_dir = repo.local_repo_dir.path();
 
     let commit = repo.find_commit(1).id();
-    cherry_pick::execute(push_options(Some(commit)), current_dir).unwrap();
+    create::execute(create_options(Some(commit)), current_dir).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());

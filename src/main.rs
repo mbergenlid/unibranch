@@ -1,5 +1,5 @@
 use clap::{command, Parser, Subcommand};
-use sc::commands::{cherry_pick, pull, push};
+use sc::commands::{create, pull, push};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -10,7 +10,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    CherryPick(cherry_pick::Options),
+    Create(create::Options),
     Pull,
     Push,
 }
@@ -19,7 +19,7 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::CherryPick(config) => cherry_pick::execute(config, ".")?,
+        Commands::Create(config) => create::execute(config, ".")?,
         Commands::Pull => pull::execute(".")?,
         Commands::Push => push::execute(".")?,
     };

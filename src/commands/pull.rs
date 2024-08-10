@@ -7,6 +7,7 @@ use anyhow::Context;
 
 use crate::git::{local_commit::MainCommit, GitRepo};
 
+//TODO: Rename to 'update' or 'sync' or something
 pub fn execute<P>(repo_dir: P) -> anyhow::Result<()>
 where
     P: AsRef<Path>,
@@ -56,8 +57,9 @@ where
                     .status()?;
                 parent_commit = new_parent_1.commit();
             }
-            MainCommit::UnTracked(_local_commit) => {
-                todo!()
+            MainCommit::UnTracked(local_commit) => {
+                let rebased_commit = local_commit.rebase(&parent_commit)?;
+                parent_commit = rebased_commit.commit();
             }
         }
     }

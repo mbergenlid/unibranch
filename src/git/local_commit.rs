@@ -21,7 +21,11 @@ impl<'repo> MainCommit<'repo> {
         if let Err(error) = res {
             match error.code() {
                 git2::ErrorCode::NotFound => {
-                    return Ok(MainCommit::UnTracked(LocalCommit { _repo: repo, commit }))
+                    return Ok(MainCommit::UnTracked(LocalCommit {
+                        repo,
+                        git_repo,
+                        commit,
+                    }))
                 }
                 _ => return Err(error),
             }
@@ -38,13 +42,18 @@ impl<'repo> MainCommit<'repo> {
                 meta_data,
             }))
         } else {
-            Ok(MainCommit::UnTracked(LocalCommit { _repo: repo, commit }))
+            Ok(MainCommit::UnTracked(LocalCommit {
+                repo,
+                git_repo,
+                commit,
+            }))
         }
     }
 }
 
 pub struct LocalCommit<'repo> {
-    _repo: &'repo Repository,
+    repo: &'repo Repository,
+    git_repo: &'repo GitRepo,
     commit: Commit<'repo>,
 }
 
@@ -56,12 +65,29 @@ pub struct TrackedCommit<'repo> {
 }
 
 impl<'repo> LocalCommit<'repo> {
-    pub fn new(repo: &'repo Repository, commit: Commit<'repo>) -> Self {
-        LocalCommit { _repo: repo, commit }
-    }
-
     pub fn as_commit(&self) -> &Commit {
         &self.commit
+    }
+
+    pub fn commit(self) -> Commit<'repo> {
+        self.commit
+    }
+
+    pub(crate) fn rebase(self, parent_commit: &Commit<'_>) -> anyhow::Result<Self> {
+        let index = self
+            .repo
+            .cherrypick_commit(self.as_commit(), &parent_commit, 0, None)?;
+        let new_commit = self.git_repo.commit_index(
+            index,
+            self.as_commit(),
+            parent_commit.id(),
+            self.commit.message().expect("Not valid UTF-8 message"),
+        )?;
+        Ok(LocalCommit {
+            repo: self.repo,
+            git_repo: self.git_repo,
+            commit: new_commit,
+        })
     }
 }
 
@@ -105,6 +131,22 @@ impl<'repo> TrackedCommit<'repo> {
         &self.meta_data
     }
 
+    /*
+     * Apply the diff between this commit and the self.meta_data.remote_commit
+     * and return the new TrackedCommit
+     * Basically performs the old GitRepo::cherry_pick
+     */
+    pub fn update_local_branch_head(self) -> Result<Self, git2::Error> {
+        todo!()
+    }
+
+    /*
+     * Update this commit with changes from remote,
+     */
+    pub fn update_from_remote(self) -> Result<Self, git2::Error> {
+        todo!()
+    }
+
     pub fn update_remote(self, new_remote_head: Oid) -> Self {
         TrackedCommit {
             repo: self.repo,
@@ -128,6 +170,8 @@ impl<'repo> TrackedCommit<'repo> {
                 //No need to merge as base_commit doesn't contain any commits that aren't already
                 //in remote_commit
                 self.repo.find_commit(remote_commit.id())?
+            } else if merge_base == remote_commit.id() {
+                self.repo.find_commit(base_commit.id())?
             } else {
                 let mut remote_index =
                     self.repo
@@ -170,12 +214,8 @@ impl<'repo> TrackedCommit<'repo> {
         )?;
 
         drop(base_commit);
-        let new_meta_data = self.meta_data
-                .update_commit(new_remote_commit.id());
-        self.git_repo.save_meta_data(
-            &new_commit,
-            &new_meta_data,
-        )?;
+        let new_meta_data = self.meta_data.update_commit(new_remote_commit.id());
+        self.git_repo.save_meta_data(&new_commit, &new_meta_data)?;
 
         Ok(TrackedCommit {
             repo: self.repo,
