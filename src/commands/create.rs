@@ -1,12 +1,16 @@
 use std::{
-    path::Path, process::{Command, Stdio}
+    path::Path,
+    process::{Command, Stdio},
 };
 
 use anyhow::Context;
 
-use crate::git::{local_commit::{CommitMetadata, MainCommit}, GitRepo};
+use crate::git::{
+    local_commit::{CommitMetadata, MainCommit},
+    GitRepo,
+};
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Default)]
 pub struct Options {
     #[arg(short, long)]
     pub dry_run: bool,
@@ -29,7 +33,10 @@ where
     };
 
     let branch_name = {
-        let msg = untracked_commit.as_commit().message().unwrap_or("No commit message");
+        let msg = untracked_commit
+            .as_commit()
+            .message()
+            .unwrap_or("No commit message");
         let title = msg.lines().next().expect("Must have at least one line");
         title
             .replace(
@@ -38,7 +45,6 @@ where
             )
             .to_ascii_lowercase()
     };
-
 
     let pr_commit = git_repo.find_head_of_remote_branch(&branch_name);
     if pr_commit.is_some() {

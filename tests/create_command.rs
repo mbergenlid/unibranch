@@ -1,6 +1,5 @@
 mod common;
 
-
 use common::RemoteRepo;
 use git2::Oid;
 use indoc::indoc;
@@ -168,5 +167,8 @@ fn should_fail_if_remote_branch_already_exists() {
 
     let result = create::execute(create_options(None), repo.local_repo_dir.path());
     assert!(result.is_err());
-    assert_eq!(format!("{}", result.unwrap_err()), "Remote branch 'commit2' already exist");
+    assert_eq!(
+        format!("{}", result.unwrap_err()),
+        "Remote branch 'commit2' already exist"
+    );
 }

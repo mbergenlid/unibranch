@@ -39,7 +39,8 @@ fn update_commit_from_remote() {
         .commit_all("Fixup")
         .push();
 
-    pull::execute(&local_repo.local_repo_dir).expect("Error while running pull command");
+    pull::execute(pull::Options::default(), &local_repo.local_repo_dir)
+        .expect("Error while running pull command");
 
     let local_commit_diff =
         String::from_utf8(local_repo.diff("master", "master^").stdout).expect("Getting diff");
@@ -133,7 +134,8 @@ fn update_commit_from_remote_with_local_changes() {
     );
 
     //Perform the actual update
-    pull::execute(&local_repo.local_repo_dir).expect("Unable to perform pull command");
+    pull::execute(pull::Options::default(), &local_repo.local_repo_dir)
+        .expect("Unable to perform pull command");
 
     let local_commit_diff =
         String::from_utf8(local_repo.diff("master^", "master").stdout).expect("Getting diff");
@@ -222,7 +224,7 @@ fn sync_multiple_commits() {
         .push()
         .show("HEAD^");
 
-    pull::execute(&local_repo.local_repo_dir).unwrap();
+    pull::execute(pull::Options::default(), &local_repo.local_repo_dir).unwrap();
 
     let second_pr_diff =
         String::from_utf8(local_repo.diff("master^", "master").stdout).expect("Getting diff");
@@ -258,3 +260,6 @@ fn sync_multiple_commits() {
         "Local 'master' of first commit hasn't been updated with the remote changes"
     );
 }
+
+#[test]
+fn test_update_after_rebase_of_main() {}

@@ -9,3 +9,4 @@
 * Implement 'pick' command --> Pick a remote branch and bring it into a virtual branch
 * Implement 'pull' command
 
+* Implement 'patch' command --> Patch a given commit with a autofixup

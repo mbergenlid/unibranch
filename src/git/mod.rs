@@ -1,4 +1,8 @@
-use std::{ffi::CString, path::Path};
+use std::{
+    ffi::CString,
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Ok};
 use clap::builder::OsStr;
@@ -12,6 +16,7 @@ pub struct GitRepo {
     repo: git2::Repository,
     pub base_commit_id: Oid,
     pub current_branch_name: String,
+    path: PathBuf,
 }
 
 impl GitRepo {
@@ -44,6 +49,7 @@ impl GitRepo {
         config.set_str("notes.rewriteRef", "refs/notes/*")?;
         Ok(GitRepo {
             repo,
+            path: path.as_ref().into(),
             base_commit_id,
             current_branch_name,
         })
@@ -145,7 +151,7 @@ impl GitRepo {
         &self,
         commit: &Commit,
         meta_data: &CommitMetadata,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), git2::Error> {
         let committer = self.repo.signature().or_else(|_| {
             git2::Signature::now(
                 String::from_utf8_lossy(commit.committer().name_bytes()).as_ref(),
@@ -160,6 +166,14 @@ impl GitRepo {
             &format!("{}", meta_data),
             true,
         )?;
+        std::result::Result::Ok(())
+    }
+
+    pub fn save_merge_state(&self, _commit1: &Commit, commit2: &Commit) -> anyhow::Result<()> {
+        std::fs::create_dir_all(&format!("{}/.ubr", self.path.display()))?;
+        let mut file =
+            std::fs::File::create_new(&format!("{}/.ubr/SYNC_MERGE_HEAD", self.path.display()))?;
+        file.write(format!("{}\n", commit2.id()).as_bytes())?;
         Ok(())
     }
 

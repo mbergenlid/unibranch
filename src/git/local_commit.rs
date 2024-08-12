@@ -1,7 +1,7 @@
-use std::{borrow::Cow, error::Error, fmt::Display, str::FromStr};
+use std::{borrow::Cow, error::Error, ffi::CString, fmt::Display, str::FromStr};
 
 use anyhow::Context;
-use git2::{Branch, Commit, Oid, Repository};
+use git2::{Branch, Commit, FileFavor, MergeOptions, Oid, Repository};
 use itertools::Itertools;
 
 use super::GitRepo;
@@ -138,19 +138,100 @@ impl<'repo> TrackedCommit<'repo> {
         &self.meta_data
     }
 
-    /*
-     * Apply the diff between this commit and the self.meta_data.remote_commit
-     * and return the new TrackedCommit
-     * Basically performs the old GitRepo::cherry_pick
-     */
+    //
+    // Apply the diff between this commit and the self.meta_data.remote_commit
+    // and return the new TrackedCommit
+    //
+    //
+    //              *
+    //              |    * (Merge)
+    //              |   / \
+    //              *  /   * (remote_branch_head)
+    //              | * <-/------------------------ cherry-pick c1 local_branch_head (resolve conflicts by accepting theirs)
+    //              |  \ /
+    //        c1    *   * (local_branch_head)
+    //              |  /
+    //              | /
+    //  (origin)    *
     pub fn update_local_branch_head(self) -> Result<Self, git2::Error> {
+        let remote_commit = self
+            .repo
+            .find_commit(self.meta_data().remote_commit.unwrap())?;
+
+        let mut index = self.repo.cherrypick_commit(
+            self.as_commit(),
+            &remote_commit,
+            0,
+            Some(&MergeOptions::default().file_favor(FileFavor::Theirs)),
+        )?;
+        assert!(!index.has_conflicts());
+        if index.is_empty() {
+            return Ok(self);
+        }
+        let tree_id = index.write_tree_to(self.repo)?;
+        if tree_id == remote_commit.tree()?.id() {
+            return Ok(self);
+        }
+        let tree = self.repo.find_tree(tree_id)?;
+
+        let new_commit = {
+            let signature = self.as_commit().author();
+            self.repo.commit(
+                None,
+                &signature,
+                &signature,
+                "Fixup!",
+                &tree,
+                &[&remote_commit],
+            )?
+        };
+
+        let new_meta = self.meta_data.update_commit(new_commit);
+        self.git_repo.save_meta_data(&self.commit, &new_meta)?;
+        Ok(TrackedCommit {
+            repo: self.repo,
+            git_repo: self.git_repo,
+            commit: self.commit,
+            meta_data: new_meta,
+        })
+    }
+
+    //
+    // Merge remote_branch_head with local_branch_head unless remote_branch_head any
+    // of those are a direct dependant on the other.
+    //
+    // Will not update from remote.
+    //
+    //
+    //                 *
+    //                 |    * (Merge) <---- Produces this merge unless.
+    //                 |   / \
+    //                 *  /   * (remote_branch_head)
+    //                 | * <-/------------------------ (local_branch_head)
+    //                 |  \ /
+    //           c1    *   *
+    //                 |  /
+    //                 | /
+    //     (origin)    *
+    pub fn update_from_remote(self) -> Result<Self, git2::Error> {
         todo!()
     }
 
-    /*
-     * Update this commit with changes from remote,
-     */
-    pub fn update_from_remote(self) -> Result<Self, git2::Error> {
+    //
+    //
+    //                         * (Merge with 'main') <---- Produces this merge
+    //                 *      /  \
+    //                 |     /    * (Merge)
+    //                 |    /    / \
+    //           c1    *   /    /   * (remote_branch_head)
+    //                 |  /    * <-/------------------------(local_branch_head)
+    //                 | /      \ /
+    //     (origin)    *         *
+    //                 |        /
+    //                 |       /
+    //                 *------/
+    //
+    pub fn sync_with_main(self) -> Result<Self, git2::Error> {
         todo!()
     }
 
@@ -183,8 +264,26 @@ impl<'repo> TrackedCommit<'repo> {
                 let mut remote_index =
                     self.repo
                         .merge_commits(&base_commit, &remote_commit, None)?;
+
+                //self.repo.merge_analysis_for_ref
                 if remote_index.has_conflicts() {
-                    anyhow::bail!("Index has conflicts");
+                    for c in remote_index.conflicts()? {
+                        let c = c?;
+                        println!("Conclict {:?}", CString::new(c.our.unwrap().path).unwrap())
+                    }
+                    self.repo.set_head_detached(base_commit.id())?;
+                    self.repo.merge(
+                        &[&self.repo.find_annotated_commit(remote_commit.id())?],
+                        None,
+                        None,
+                    )?;
+                    self.git_repo
+                        .save_merge_state(&base_commit, &remote_commit)?;
+                    anyhow::bail!(
+                        "Unable to merge {} and {}",
+                        base_commit.id(),
+                        remote_commit.id()
+                    );
                 }
                 if remote_index.is_empty() {
                     anyhow::bail!("Index is empty");

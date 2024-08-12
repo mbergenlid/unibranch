@@ -53,7 +53,7 @@ fn test_update_a_diff() {
         .append_file("File1", "Some PR review fixes")
         .commit_all_amend();
 
-    pull::execute(repo.local_repo_dir.path()).unwrap();
+    pull::execute(pull::Options::default(), repo.local_repo_dir.path()).unwrap();
 
     //Verify the diff now.
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
@@ -145,7 +145,7 @@ fn test_a_more_complex_update() {
         )
         .commit_all_fixup(unrelated_commit);
 
-    pull::execute(repo.local_repo_dir.path()).unwrap();
+    pull::execute(pull::Options::default(), repo.local_repo_dir.path()).unwrap();
 
     //Verify the diff now.
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
@@ -220,7 +220,7 @@ fn test_update_a_commit_and_modify_the_commit_message() {
         .replace("{}", &repo.rev_parse("origin/commit2"))
     );
 
-    pull::execute(repo.local_repo_dir.path()).unwrap();
+    pull::execute(pull::Options::default(), repo.local_repo_dir.path()).unwrap();
 
     //Note is still the same
     assert_eq!(
@@ -245,53 +245,4 @@ fn test_update_a_commit_and_modify_the_commit_message() {
         -Some Pr fixes
     "};
     assert_eq!(actual_diff, expected_diff);
-}
-
-#[ignore = "Not implemented yet"]
-#[allow(dead_code)]
-fn test_branch_updated_on_remote() {
-    let remote = RemoteRepo::new();
-    let repo = remote.clone();
-
-    let repo = repo
-        .create_file("File1", "Hello world!")
-        .commit_all("commit1")
-        .push();
-
-    let repo = repo
-        .create_file("File2", "Completely unrelated changes in another file")
-        .commit_all("unrelated commit");
-
-    let repo = repo
-        .append_file("File1", "Another Hello, World!")
-        .commit_all("commit2");
-
-    let current_dir = repo.local_repo_dir.path();
-
-    let commit = repo.find_commit(0).id();
-    create::execute(push_options(Some(commit)), current_dir).unwrap();
-
-    let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
-        .expect("Output of diff is not valid UTF-8");
-    let expected_diff = indoc! {"
-        diff --git a/File1 b/File1
-        index e8151f3..cd08755 100644
-        --- a/File1
-        +++ b/File1
-        @@ -1,2 +1 @@
-         Hello world!
-        -Another Hello, World!
-    "};
-    assert_eq!(actual_diff, expected_diff);
-
-    //Someone else commits and pushes on branch origin/commit2
-    let other_checkout = remote.clone();
-
-    other_checkout
-        .checkout("commit2")
-        .create_file("File3", "Some other changes someone else decided to do")
-        .commit_all("other user change")
-        .push();
-
-    repo.fetch();
 }

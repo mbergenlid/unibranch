@@ -11,7 +11,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Create(create::Options),
-    Pull,
+    Pull(pull::Options),
     Push,
 }
 
@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Create(config) => create::execute(config, ".")?,
-        Commands::Pull => pull::execute(".")?,
+        Commands::Pull(config) => pull::execute(config, ".")?,
         Commands::Push => push::execute(".")?,
     };
     Ok(())

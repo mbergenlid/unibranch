@@ -8,8 +8,8 @@ use std::{
 
 use git2::{Commit, Oid};
 use pretty_assertions::assert_eq;
-use ubr::git::local_commit::CommitMetadata;
 use tempfile::{tempdir, TempDir};
+use ubr::git::local_commit::CommitMetadata;
 
 pub struct RemoteRepo {
     dir: TempDir,
@@ -112,6 +112,7 @@ impl<'a> TestRepoWithRemote<'a> {
         self
     }
 
+    #[allow(dead_code)]
     pub fn append_file<P>(self, path: P, content: &str) -> Self
     where
         P: AsRef<Path>,
@@ -247,6 +248,22 @@ impl<'a> TestRepoWithRemote<'a> {
         assert!(Command::new("git")
             .current_dir(current_dir)
             .arg("push")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn pull_rebase(self) -> Self {
+        let current_dir = self.local_repo_dir.path();
+
+        assert!(Command::new("git")
+            .current_dir(current_dir)
+            .arg("pull")
+            .arg("--rebase")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status()
