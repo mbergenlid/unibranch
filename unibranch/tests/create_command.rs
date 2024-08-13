@@ -1,6 +1,6 @@
-use test_repo::RemoteRepo;
 use git2::Oid;
 use indoc::indoc;
+use test_repo::RemoteRepo;
 use ubr::commands::create;
 
 use pretty_assertions::assert_eq;

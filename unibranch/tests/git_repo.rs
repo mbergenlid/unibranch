@@ -1,6 +1,5 @@
-
-use test_repo::{RemoteRepo, TestRepoWithRemote};
 use pretty_assertions::assert_eq;
+use test_repo::{RemoteRepo, TestRepoWithRemote};
 use ubr::git::GitRepo;
 
 fn init_repo(remote: &RemoteRepo) -> TestRepoWithRemote {

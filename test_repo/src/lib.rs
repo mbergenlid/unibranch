@@ -1,5 +1,10 @@
 use std::{
-    fmt::Display, fs::{File, OpenOptions}, io::Write, os::unix::ffi::OsStrExt, path::Path, process::{Command, Output, Stdio}
+    fmt::Display,
+    fs::{File, OpenOptions},
+    io::Write,
+    os::unix::ffi::OsStrExt,
+    path::Path,
+    process::{Command, Output, Stdio},
 };
 
 use git2::{Commit, Oid};

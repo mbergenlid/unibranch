@@ -1,4 +1,3 @@
-
 use git2::Oid;
 use indoc::indoc;
 use pretty_assertions::assert_eq;

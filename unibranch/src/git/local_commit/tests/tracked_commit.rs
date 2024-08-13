@@ -1,13 +1,13 @@
-use test_repo::RemoteRepo;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use ubr::{
+use test_repo::RemoteRepo;
+use crate::{
     commands::create,
     git::{
-        local_commit::{MainCommit, TrackedCommit}, GitRepo
+        local_commit::{MainCommit, TrackedCommit},
+        GitRepo,
     },
 };
-
 
 #[test]
 fn test_simple_update() {
@@ -61,7 +61,10 @@ fn test_simple_update() {
     assert_eq!(actual_diff, expected_diff);
 
     let new_tracked_commit = tracked(git_repo.find_unpushed_commit("HEAD").unwrap());
-    assert_eq!(new_tracked_commit.meta_data().remote_commit, tracked_commit.meta_data().remote_commit);
+    assert_eq!(
+        new_tracked_commit.meta_data().remote_commit,
+        tracked_commit.meta_data().remote_commit
+    );
 }
 
 fn tracked(commit: MainCommit) -> TrackedCommit {
@@ -116,7 +119,10 @@ fn test_update_local() {
     assert_eq!(actual_diff, expected_diff);
 
     let new_tracked_commit = tracked(git_repo.find_unpushed_commit("HEAD").unwrap());
-    assert_eq!(new_tracked_commit.meta_data().remote_commit, tracked_commit.meta_data().remote_commit);
+    assert_eq!(
+        new_tracked_commit.meta_data().remote_commit,
+        tracked_commit.meta_data().remote_commit
+    );
 }
 
 #[test]
@@ -147,9 +153,7 @@ fn test_update_with_a_rebase_first() {
         .create_file("file2", "Hello, Conflicting World!")
         .commit_all_amend();
 
-
-    let local = local
-        .pull_rebase();
+    let local = local.pull_rebase();
 
     let git_repo = GitRepo::open(local.local_repo_dir.path()).unwrap();
 
@@ -162,8 +166,9 @@ fn test_update_with_a_rebase_first() {
 
     let new_commit = format!("{}", tracked_commit.meta_data().remote_commit.unwrap());
 
-    let actual_diff = String::from_utf8(local.diff(&format!("{}^^", new_commit), &new_commit).stdout)
-        .expect("Output of diff is not valid UTF-8");
+    let actual_diff =
+        String::from_utf8(local.diff(&format!("{}^^", new_commit), &new_commit).stdout)
+            .expect("Output of diff is not valid UTF-8");
     let expected_diff = indoc! {"
         diff --git a/file2 b/file2
         new file mode 100644
@@ -176,7 +181,10 @@ fn test_update_with_a_rebase_first() {
     assert_eq!(actual_diff, expected_diff);
 
     let new_tracked_commit = tracked(git_repo.find_unpushed_commit("HEAD").unwrap());
-    assert_eq!(new_tracked_commit.meta_data().remote_commit, tracked_commit.meta_data().remote_commit);
+    assert_eq!(
+        new_tracked_commit.meta_data().remote_commit,
+        tracked_commit.meta_data().remote_commit
+    );
 }
 
 #[test]
@@ -201,5 +209,8 @@ fn nothing_should_happen_if_no_changes() {
     let original_branch_head = tracked_commit.meta_data().remote_commit.unwrap();
     let new_tracked_commit = tracked_commit.update_local_branch_head().unwrap();
 
-    assert_eq!(new_tracked_commit.meta_data().remote_commit.unwrap(), original_branch_head);
+    assert_eq!(
+        new_tracked_commit.meta_data().remote_commit.unwrap(),
+        original_branch_head
+    );
 }
