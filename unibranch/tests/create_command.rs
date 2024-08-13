@@ -1,6 +1,4 @@
-mod common;
-
-use common::RemoteRepo;
+use test_repo::RemoteRepo;
 use git2::Oid;
 use indoc::indoc;
 use ubr::commands::create;

@@ -1,6 +1,5 @@
-mod common;
 
-use common::RemoteRepo;
+use test_repo::RemoteRepo;
 
 use ubr::{
     commands::{create, pull},

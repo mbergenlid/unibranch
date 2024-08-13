@@ -1,15 +1,10 @@
 use std::{
-    fs::{File, OpenOptions},
-    io::Write,
-    os::unix::ffi::OsStrExt,
-    path::Path,
-    process::{Command, Output, Stdio},
+    fmt::Display, fs::{File, OpenOptions}, io::Write, os::unix::ffi::OsStrExt, path::Path, process::{Command, Output, Stdio}
 };
 
 use git2::{Commit, Oid};
 use pretty_assertions::assert_eq;
 use tempfile::{tempdir, TempDir};
-use ubr::git::local_commit::CommitMetadata;
 
 pub struct RemoteRepo {
     dir: TempDir,
@@ -405,7 +400,7 @@ impl<'a> TestRepoWithRemote<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn assert_note(&self, rev: &str, expected_note: &CommitMetadata) {
+    pub fn assert_note<D: Display>(&self, rev: &str, expected_note: D) {
         let note = self.find_note(rev);
         assert_eq!(
             note,

@@ -1,4 +1,4 @@
-use common::RemoteRepo;
+use test_repo::RemoteRepo;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
 use ubr::{
@@ -8,7 +8,6 @@ use ubr::{
     },
 };
 
-mod common;
 
 #[test]
 fn test_simple_update() {

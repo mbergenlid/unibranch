@@ -1,6 +1,5 @@
-mod common;
 
-use common::{RemoteRepo, TestRepoWithRemote};
+use test_repo::{RemoteRepo, TestRepoWithRemote};
 use pretty_assertions::assert_eq;
 use ubr::git::GitRepo;
 

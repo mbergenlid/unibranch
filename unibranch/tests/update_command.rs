@@ -1,11 +1,10 @@
-mod common;
 
 use git2::Oid;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
 use ubr::commands::{create, pull};
 
-use crate::common::RemoteRepo;
+use test_repo::RemoteRepo;
 
 fn push_options(commit_ref: Option<Oid>) -> create::Options {
     create::Options {
