@@ -40,7 +40,9 @@ impl<'repo> MainCommit<'repo> {
             .message()
             .and_then(|m| m.parse::<CommitMetadata>().ok())
         {
-            Ok(MainCommit::Tracked(TrackedCommit::new(repo, git_repo, commit, meta_data)))
+            Ok(MainCommit::Tracked(TrackedCommit::new(
+                repo, git_repo, commit, meta_data,
+            )))
         } else {
             Ok(MainCommit::UnTracked(LocalCommit {
                 repo,

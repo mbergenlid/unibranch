@@ -1,13 +1,12 @@
+use crate::{
+    commands::create,
+    git::{local_commit::MainCommit, GitRepo},
+};
 use indoc::indoc;
 use pretty_assertions::assert_eq;
 use test_repo::RemoteRepo;
-use crate::{
-    commands::create,
-    git::{
-        local_commit::{MainCommit, TrackedCommit},
-        GitRepo,
-    },
-};
+
+use super::tracked;
 
 #[test]
 fn test_simple_update() {
@@ -65,13 +64,6 @@ fn test_simple_update() {
         new_tracked_commit.meta_data().remote_commit,
         tracked_commit.meta_data().remote_commit
     );
-}
-
-fn tracked(commit: MainCommit) -> TrackedCommit {
-    match commit {
-        MainCommit::UnTracked(_) => panic!("not a TrackedCommit"),
-        MainCommit::Tracked(tracked) => tracked,
-    }
 }
 
 #[test]
