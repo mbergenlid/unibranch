@@ -426,4 +426,12 @@ impl<'a> TestRepoWithRemote<'a> {
             rev2,
         )
     }
+
+    pub fn assert_tracked_commit_in_sync(&self, tracked_commit_id: Oid, remote_head: Oid) {
+        let rev1 = &format!("{}^", tracked_commit_id);
+        let rev2 = &format!("{}", tracked_commit_id);
+        let main_diff = String::from_utf8(self.diff(rev1, rev2).stdout).unwrap();
+
+        self.assert_diff("origin/master", &format!("{}", remote_head), &main_diff);
+    }
 }

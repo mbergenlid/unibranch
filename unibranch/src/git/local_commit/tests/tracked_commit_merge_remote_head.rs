@@ -1,5 +1,5 @@
 use indoc::indoc;
-use test_repo::RemoteRepo;
+use test_repo::{RemoteRepo, TestRepoWithRemote};
 
 use pretty_assertions::assert_eq;
 
@@ -7,6 +7,24 @@ use crate::{
     commands::create,
     git::GitRepo,
 };
+
+fn setup_repo(remote: &RemoteRepo) -> TestRepoWithRemote {
+    let local = remote.clone();
+
+    let local = local
+        .create_file("file1", "Hello, World!")
+        .commit_all("Initial")
+        .push();
+
+    let local = local
+        .create_file("file2", "another file")
+        .commit_all("Commit 1");
+
+    {
+        create::execute(create::Options::default(), &local.local_repo_dir).unwrap();
+    }
+    local
+}
 
 //          *                                        *
 //          |                                        |
@@ -21,20 +39,7 @@ use crate::{
 #[test]
 fn should_not_merge_if_remote_commit_is_descendant_of_local() {
     let remote = RemoteRepo::new();
-    let local = remote.clone();
-
-    let local = local
-        .create_file("file1", "Hello, World!")
-        .commit_all("Initial")
-        .push();
-
-    let local = local
-        .create_file("file2", "another file")
-        .commit_all("Commit 1");
-
-    {
-        create::execute(create::Options::default(), &local.local_repo_dir).unwrap()
-    }
+    let local = setup_repo(&remote);
 
     let remote_branch_head = {
         remote
@@ -61,7 +66,6 @@ fn should_not_merge_if_remote_commit_is_descendant_of_local() {
 
     local.assert_note(&rev_str, tracked_commit.meta_data());
 
-    let diff = String::from_utf8(local.diff(&format!("{}^", rev_str), &format!("{}", rev_str)).stdout).unwrap();
 
     let expected_diff = indoc! {"
         diff --git a/file2 b/file2
@@ -73,8 +77,9 @@ fn should_not_merge_if_remote_commit_is_descendant_of_local() {
         +another file
         +Some fixes
     "};
+    local.assert_diff(&format!("{}^", rev_str), &format!("{}", rev_str), expected_diff);
 
-    assert_eq!(diff, expected_diff);
+    local.assert_tracked_commit_in_sync(tracked_commit.as_commit().id(), tracked_commit.meta_data().remote_commit.unwrap());
 }
 
 //
@@ -91,21 +96,7 @@ fn should_not_merge_if_remote_commit_is_descendant_of_local() {
 #[test]
 fn should_not_merge_if_local_commit_is_descendant_of_remote() {
     let remote = RemoteRepo::new();
-    let local = remote.clone();
-
-    let local = local
-        .create_file("file1", "Hello, World!")
-        .commit_all("Initial")
-        .push();
-
-    let local = local
-        .create_file("file2", "another file")
-        .commit_all("Commit 1");
-
-    {
-        // Create initial PR
-        create::execute(create::Options::default(), &local.local_repo_dir).unwrap()
-    }
+    let local = setup_repo(&remote);
 
     let git_repo = GitRepo::open(&local.local_repo_dir).unwrap();
     let local = {
@@ -118,13 +109,15 @@ fn should_not_merge_if_local_commit_is_descendant_of_remote() {
         local
     };
 
-    let _local = local.fetch();
+    let local = local.fetch();
 
     let tracked_commit = super::tracked(git_repo.find_unpushed_commit("HEAD").unwrap());
     let local_branch_head = tracked_commit.meta_data().remote_commit;
     let tracked_commit = tracked_commit.merge_remote_head(None).unwrap();
 
     assert_eq!(tracked_commit.meta_data().remote_commit, local_branch_head);
+
+    local.assert_tracked_commit_in_sync(tracked_commit.as_commit().id(), tracked_commit.meta_data().remote_commit.unwrap());
 }
 //
 //          *                                        *
@@ -140,21 +133,7 @@ fn should_not_merge_if_local_commit_is_descendant_of_remote() {
 #[test]
 fn test_merge() {
     let remote = RemoteRepo::new();
-    let local = remote.clone();
-
-    let local = local
-        .create_file("file1", "Hello, World!")
-        .commit_all("Initial")
-        .push();
-
-    let local = local
-        .create_file("file2", "another file")
-        .commit_all("Commit 1");
-
-    {
-        // Create initial PR
-        create::execute(create::Options::default(), &local.local_repo_dir).unwrap()
-    }
+    let local = setup_repo(&remote);
 
     let git_repo = GitRepo::open(&local.local_repo_dir).unwrap();
     let (local, tracked_commit) = {
@@ -202,27 +181,5 @@ fn test_merge() {
         "}
     );
 
-
-    local.assert_diff(
-        "origin/master",
-        &format!("{}", tracked_commit.meta_data().remote_commit.unwrap()),
-        indoc! {"
-            diff --git a/file2 b/file2
-            new file mode 100644
-            index 0000000..f57a277
-            --- /dev/null
-            +++ b/file2
-            @@ -0,0 +1,2 @@
-            +another file
-            +some fixes
-            diff --git a/file3 b/file3
-            new file mode 100644
-            index 0000000..fa50e2f
-            --- /dev/null
-            +++ b/file3
-            @@ -0,0 +1 @@
-            +Some fixes in file3
-        "}
-    );
-    //    assert_eq!(tracked_commit.meta_data().remote_commit, local_branch_head);
+    local.assert_tracked_commit_in_sync(tracked_commit.as_commit().id(), tracked_commit.meta_data().remote_commit.unwrap());
 }
