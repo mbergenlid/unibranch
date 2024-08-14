@@ -5,7 +5,7 @@ use pretty_assertions::assert_eq;
 
 use crate::{
     commands::create,
-    git::{local_commit::tracked_commit, GitRepo},
+    git::GitRepo,
 };
 
 //          *                                        *
@@ -126,7 +126,6 @@ fn should_not_merge_if_local_commit_is_descendant_of_remote() {
 
     assert_eq!(tracked_commit.meta_data().remote_commit, local_branch_head);
 }
-
 //
 //          *                                        *
 //          |                                        |    * (local_branch_head)
@@ -168,19 +167,62 @@ fn test_merge() {
         (local, tracked_commit)
     };
 
-    let remote_branch_head = {
+    {
         remote
             .clone()
             .checkout("commit-1")
             .create_file("file3", "Some fixes in file3")
             .commit_all("Fixes")
-            .push()
-            .head()
-    };
+            .push();
+    }
 
-    let _local = local.fetch();
+    let local = local.fetch();
 
     let tracked_commit = tracked_commit.merge_remote_head(None).unwrap();
 
+    local.assert_diff(
+        &format!("{}^", tracked_commit.as_commit().id()),
+        &format!("{}", tracked_commit.as_commit().id()),
+        indoc! {"
+            diff --git a/file2 b/file2
+            new file mode 100644
+            index 0000000..f57a277
+            --- /dev/null
+            +++ b/file2
+            @@ -0,0 +1,2 @@
+            +another file
+            +some fixes
+            diff --git a/file3 b/file3
+            new file mode 100644
+            index 0000000..fa50e2f
+            --- /dev/null
+            +++ b/file3
+            @@ -0,0 +1 @@
+            +Some fixes in file3
+        "}
+    );
+
+
+    local.assert_diff(
+        "origin/master",
+        &format!("{}", tracked_commit.meta_data().remote_commit.unwrap()),
+        indoc! {"
+            diff --git a/file2 b/file2
+            new file mode 100644
+            index 0000000..f57a277
+            --- /dev/null
+            +++ b/file2
+            @@ -0,0 +1,2 @@
+            +another file
+            +some fixes
+            diff --git a/file3 b/file3
+            new file mode 100644
+            index 0000000..fa50e2f
+            --- /dev/null
+            +++ b/file3
+            @@ -0,0 +1 @@
+            +Some fixes in file3
+        "}
+    );
     //    assert_eq!(tracked_commit.meta_data().remote_commit, local_branch_head);
 }

@@ -245,6 +245,9 @@ impl GitRepo {
             .cherrypick_commit(original_commit, &base_commit, 0, None)
             .context("Cherry picking directly on master")?;
 
+        if complete_index.has_conflicts() {
+            anyhow::bail!("There are conflicts");
+        }
         let parent_commit = pr_head.unwrap_or(base_commit);
         let diff = self.repo.diff_tree_to_index(
             Some(&parent_commit.tree()?),

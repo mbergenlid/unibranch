@@ -414,4 +414,16 @@ impl<'a> TestRepoWithRemote<'a> {
             rev
         )
     }
+
+    #[allow(dead_code)]
+    pub fn assert_diff(&self, rev1: &str, rev2: &str, expected: &str) {
+        let actual = String::from_utf8(self.diff(rev1, rev2).stdout).unwrap();
+        assert_eq!(
+            actual,
+            expected,
+            "comparing diff {} -> {}",
+            rev1,
+            rev2,
+        )
+    }
 }

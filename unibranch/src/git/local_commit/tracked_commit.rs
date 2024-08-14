@@ -4,7 +4,6 @@ use anyhow::Context;
 use anyhow::Ok;
 use git2::{Branch, Commit, FileFavor, MergeOptions, Oid, Repository};
 
-use crate::git::local_commit::MainCommit;
 
 use super::CommitMetadata;
 use super::GitRepo;
