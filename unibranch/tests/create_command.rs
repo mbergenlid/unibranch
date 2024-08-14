@@ -15,7 +15,7 @@ fn create_options(commit_ref: Option<Oid>) -> create::Options {
 #[test]
 fn basic_test() {
     let remote = RemoteRepo::new();
-    let repo = remote.clone();
+    let repo = remote.clone_repo();
 
     let repo = repo
         .create_file("File1", "Hello world!")
@@ -69,7 +69,7 @@ fn basic_test() {
 #[test]
 fn test_create_from_not_head_commit() {
     let remote = RemoteRepo::new();
-    let repo = remote.clone();
+    let repo = remote.clone_repo();
 
     let repo = repo
         .create_file("File1", "Hello world!")
@@ -124,7 +124,7 @@ fn test_create_from_not_head_commit() {
 #[test]
 fn should_not_be_able_to_call_create_for_same_commit_twice() {
     let remote = RemoteRepo::new();
-    let repo = remote.clone();
+    let repo = remote.clone_repo();
 
     let repo = repo
         .create_file("File1", "Hello world!")
@@ -146,7 +146,7 @@ fn should_not_be_able_to_call_create_for_same_commit_twice() {
 #[test]
 fn should_fail_if_remote_branch_already_exists() {
     let remote = RemoteRepo::new();
-    let repo = remote.clone();
+    let repo = remote.clone_repo();
 
     let repo = repo
         .create_file("File1", "Hello world!")

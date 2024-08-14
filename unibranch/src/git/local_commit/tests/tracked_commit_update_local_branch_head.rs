@@ -11,7 +11,7 @@ use super::tracked;
 #[test]
 fn test_simple_update() {
     let remote = RemoteRepo::new();
-    let local = remote.clone();
+    let local = remote.clone_repo();
 
     let local = local
         .create_file("file1", "Hello, World!")
@@ -69,7 +69,7 @@ fn test_simple_update() {
 #[test]
 fn test_update_local() {
     let remote = RemoteRepo::new();
-    let local = remote.clone();
+    let local = remote.clone_repo();
 
     let local = local
         .create_file("file1", "Hello, World!")
@@ -120,7 +120,7 @@ fn test_update_local() {
 #[test]
 fn test_update_with_a_rebase_first() {
     let remote = RemoteRepo::new();
-    let local = remote.clone();
+    let local = remote.clone_repo();
 
     let local = local
         .create_file("file1", "Hello, World!")
@@ -134,7 +134,7 @@ fn test_update_with_a_rebase_first() {
     create::execute(create::Options::default(), local.local_repo_dir.path()).unwrap();
 
     {
-        let other_local = remote.clone();
+        let other_local = remote.clone_repo();
         other_local
             .create_file("unrelated_file", "Unrelated")
             .commit_all("Other commit")
@@ -182,7 +182,7 @@ fn test_update_with_a_rebase_first() {
 #[test]
 fn nothing_should_happen_if_no_changes() {
     let remote = RemoteRepo::new();
-    let local = remote.clone();
+    let local = remote.clone_repo();
 
     let local = local
         .create_file("file1", "Hello, World!")

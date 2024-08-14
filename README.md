@@ -33,6 +33,21 @@ c1          *   * (local_branch_head)
 ```
 
 ```
+
+            *
+            |    * (Merge)
+            |   / \
+            *  /   * (remote_branch_head)
+            | * <-/------------------------ cherry-pick c1 local_branch_head (resolve conflicts by accepting theirs)
+            |  \ /
+c1          *   * (local_branch_head)
+            |  /
+            | /
+(origin)    *
+
+```
+
+```
                     * (Merge with 'main')
             *      /  \
             |     /    * (Merge)

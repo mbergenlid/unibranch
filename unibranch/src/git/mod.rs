@@ -14,7 +14,6 @@ pub mod local_commit;
 
 pub struct GitRepo {
     repo: git2::Repository,
-    pub base_commit_id: Oid,
     pub current_branch_name: String,
     path: PathBuf,
 }
@@ -39,8 +38,6 @@ impl GitRepo {
         let current_branch_name = current_branch_name
             .strip_prefix("refs/heads/")
             .expect("Unknown branch format");
-        let remote_ref = format!("refs/remotes/origin/{}", current_branch_name);
-        let base_commit_id = repo.refname_to_id(&remote_ref)?;
         let current_branch_name = current_branch_name.into();
 
         drop(head);
@@ -50,7 +47,6 @@ impl GitRepo {
         Ok(GitRepo {
             repo,
             path: path.as_ref().into(),
-            base_commit_id,
             current_branch_name,
         })
     }
@@ -77,7 +73,9 @@ impl GitRepo {
     }
 
     pub fn base_commit(&self) -> anyhow::Result<Commit> {
-        Ok(self.repo.find_commit(self.base_commit_id)?)
+        let remote_ref = format!("refs/remotes/origin/{}", self.current_branch_name);
+        let base_commit_id = self.repo.refname_to_id(&remote_ref)?;
+        Ok(self.repo.find_commit(base_commit_id)?)
     }
 
     pub fn head(&self) -> anyhow::Result<Commit> {
@@ -99,7 +97,7 @@ impl GitRepo {
         let commit = obj.peel_to_commit()?;
         if !self
             .repo
-            .graph_descendant_of(commit.id(), self.base_commit_id)?
+            .graph_descendant_of(commit.id(), self.base_commit()?.id())?
         {
             anyhow::bail!(format!(
                 "Commit {} is already pushed to the remote",
@@ -170,10 +168,10 @@ impl GitRepo {
     }
 
     pub fn save_merge_state(&self, _commit1: &Commit, commit2: &Commit) -> anyhow::Result<()> {
-        std::fs::create_dir_all(&format!("{}/.ubr", self.path.display()))?;
+        std::fs::create_dir_all(format!("{}/.ubr", self.path.display()))?;
         let mut file =
-            std::fs::File::create_new(&format!("{}/.ubr/SYNC_MERGE_HEAD", self.path.display()))?;
-        file.write(format!("{}\n", commit2.id()).as_bytes())?;
+            std::fs::File::create_new(format!("{}/.ubr/SYNC_MERGE_HEAD", self.path.display()))?;
+        file.write_all(format!("{}\n", commit2.id()).as_bytes())?;
         Ok(())
     }
 
@@ -225,7 +223,7 @@ impl GitRepo {
         let mut walk = self.repo.revwalk()?;
         walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
         walk.push_head()?;
-        walk.hide(self.base_commit_id)?;
+        walk.hide(self.base_commit()?.id())?;
 
         let result: Result<Vec<_>, _> = walk
             .map(|r| self.repo.find_commit(r.expect("whhat")).unwrap())
@@ -239,7 +237,7 @@ impl GitRepo {
         original_commit: &Commit,
         pr_head: Option<Commit>,
     ) -> anyhow::Result<Option<Commit>> {
-        let base_commit = self.repo.find_commit(self.base_commit_id)?;
+        let base_commit = self.repo.find_commit(self.base_commit()?.id())?;
         let complete_index = self
             .repo
             .cherrypick_commit(original_commit, &base_commit, 0, None)
@@ -259,7 +257,7 @@ impl GitRepo {
             let mut walk = self.repo.revwalk()?;
             walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
             walk.push(parent_commit.id())?;
-            walk.hide(self.base_commit_id)?;
+            walk.hide(self.base_commit()?.id())?;
             walk.next().and_then(|r| r.ok())
         };
 
@@ -279,7 +277,7 @@ impl GitRepo {
                 .apply_to_tree(&parent_commit.tree().unwrap(), &diff, None)
                 .context("Apply diff to parent")?;
 
-            if parent_commit.id() == self.base_commit_id {
+            if parent_commit.id() == self.base_commit()?.id() {
                 Ok(Some(self.commit_index(
                     index,
                     original_commit,
@@ -311,7 +309,7 @@ impl GitRepo {
             }
             anyhow::bail!(
                 "This commit cannot be cherry-picked on {}",
-                self.base_commit_id
+                self.base_commit()?.id()
             );
         }
 
@@ -354,6 +352,49 @@ impl GitRepo {
             .set_head(&format!("refs/heads/{}", self.current_branch_name))
             .context("Moving HEAD back to main branch")?;
         Ok(())
+    }
+
+    pub fn merge(&self, commit1: &Commit, commit2: &Commit) -> anyhow::Result<Oid> {
+        let mut merge_index =
+            self.repo
+                .merge_commits(commit1, commit2, None)?;
+
+        //self.repo.merge_analysis_for_ref
+        if merge_index.has_conflicts() {
+            for c in merge_index.conflicts()? {
+                let c = c?;
+                println!("Conclict {:?}", CString::new(c.our.unwrap().path).unwrap())
+            }
+            //self.repo.set_head_detached(base_commit.id())?;
+            //self.repo.merge(
+            //    &[&self.repo.find_annotated_commit(remote_commit.id())?],
+            //    None,
+            //    None,
+            //)?;
+            //self.git_repo
+            //    .save_merge_state(&base_commit, &remote_commit)?;
+            anyhow::bail!(
+                "Unable to merge {} and {}",
+                commit1.id(),
+                commit2.id()
+            );
+        }
+        if merge_index.is_empty() {
+            anyhow::bail!("Index is empty");
+        }
+        let tree = merge_index
+            .write_tree_to(&self.repo)
+            .context("write index to tree")?;
+        let oid = self.repo.commit(
+            None,
+            &self.repo.signature().context("No signature")?,
+            &self.repo.signature()?,
+            "Merge",
+            &self.repo.find_tree(tree)?,
+            &[commit1, commit2],
+        )?;
+
+        Ok(oid)
     }
 }
 

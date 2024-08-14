@@ -1,30 +1,11 @@
 use indoc::indoc;
-use test_repo::{RemoteRepo, TestRepoWithRemote};
+use test_repo::RemoteRepo;
 
 use pretty_assertions::assert_eq;
+use super::setup_repo;
 
-use crate::{
-    commands::create,
-    git::GitRepo,
-};
+use crate::git::GitRepo;
 
-fn setup_repo(remote: &RemoteRepo) -> TestRepoWithRemote {
-    let local = remote.clone();
-
-    let local = local
-        .create_file("file1", "Hello, World!")
-        .commit_all("Initial")
-        .push();
-
-    let local = local
-        .create_file("file2", "another file")
-        .commit_all("Commit 1");
-
-    {
-        create::execute(create::Options::default(), &local.local_repo_dir).unwrap();
-    }
-    local
-}
 
 //          *                                        *
 //          |                                        |
@@ -43,7 +24,7 @@ fn should_not_merge_if_remote_commit_is_descendant_of_local() {
 
     let remote_branch_head = {
         remote
-            .clone()
+            .clone_repo()
             .checkout("commit-1")
             .append_file("file2", "Some fixes")
             .commit_all("Fixes")
@@ -148,7 +129,7 @@ fn test_merge() {
 
     {
         remote
-            .clone()
+            .clone_repo()
             .checkout("commit-1")
             .create_file("file3", "Some fixes in file3")
             .commit_all("Fixes")

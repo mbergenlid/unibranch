@@ -23,7 +23,7 @@ impl RemoteRepo {
         RemoteRepo { dir }
     }
 
-    pub fn clone(&self) -> TestRepoWithRemote {
+    pub fn clone_repo(&self) -> TestRepoWithRemote {
         let local_repo_dir = tempdir().unwrap();
         println!("Local repo: {}", local_repo_dir.path().display());
         let local_repo = git2::Repository::clone(
@@ -36,6 +36,12 @@ impl RemoteRepo {
             _remote: self,
             local_repo,
         }
+    }
+}
+
+impl Default for RemoteRepo {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -99,7 +105,7 @@ impl<'a> TestRepoWithRemote<'a> {
             .stdout(Stdio::null())
             .stderr(Stdio::null());
 
-        return command;
+        command
     }
 
     pub fn create_file<P>(self, path: P, content: &str) -> Self
@@ -120,7 +126,6 @@ impl<'a> TestRepoWithRemote<'a> {
         let file_path = self.local_repo_dir.path().join(path);
         let mut tmp_file = OpenOptions::new()
             .append(true)
-            .write(true)
             .open(file_path)
             .unwrap();
         writeln!(tmp_file, "{}", content).unwrap();
@@ -341,6 +346,21 @@ impl<'a> TestRepoWithRemote<'a> {
                 .stdout,
         )
         .expect("git show is not valid UTF-8");
+        println!("{}", out);
+    }
+
+    #[allow(dead_code)]
+    pub fn print_log(&self) {
+        let current_dir = self.local_repo_dir.path();
+        let out = String::from_utf8(
+            Command::new("git")
+                .current_dir(current_dir)
+                .arg("log")
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .expect("git log is not valid UTF-8");
         println!("{}", out);
     }
 

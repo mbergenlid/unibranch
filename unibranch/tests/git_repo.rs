@@ -3,7 +3,7 @@ use test_repo::{RemoteRepo, TestRepoWithRemote};
 use ubr::git::GitRepo;
 
 fn init_repo(remote: &RemoteRepo) -> TestRepoWithRemote {
-    let test_repo = remote.clone();
+    let test_repo = remote.clone_repo();
 
     let test_repo = test_repo
         .create_file("File1", "Hello world!")

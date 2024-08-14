@@ -15,7 +15,7 @@ fn push_options(commit_ref: Option<Oid>) -> create::Options {
 #[test]
 fn test_update_a_diff() {
     let remote = RemoteRepo::new();
-    let repo = remote.clone();
+    let repo = remote.clone_repo();
 
     let repo = repo
         .create_file("File1", "Hello world!")
@@ -95,7 +95,7 @@ fn test_update_a_diff() {
 #[test]
 fn test_a_more_complex_update() {
     let remote = RemoteRepo::new();
-    let repo = remote.clone();
+    let repo = remote.clone_repo();
 
     let repo = repo
         .create_file("File1", "Hello world!")
@@ -178,7 +178,7 @@ fn test_a_more_complex_update() {
 #[test]
 fn test_update_a_commit_and_modify_the_commit_message() {
     let remote = RemoteRepo::new();
-    let repo = remote.clone();
+    let repo = remote.clone_repo();
 
     let repo = repo
         .create_file("File1", "Hello world!")

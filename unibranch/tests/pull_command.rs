@@ -12,7 +12,7 @@ use pretty_assertions::assert_eq;
 fn update_commit_from_remote() {
     let remote_repo = RemoteRepo::new();
     let local_repo = remote_repo
-        .clone()
+        .clone_repo()
         .create_file("File1", "Hello, World!")
         .commit_all("commit1")
         .push()
@@ -29,7 +29,7 @@ fn update_commit_from_remote() {
     )
     .expect("Unable to create initial PR");
 
-    let another_local_clone = remote_repo.clone();
+    let another_local_clone = remote_repo.clone_repo();
 
     let another_local_clone = another_local_clone
         .checkout("pr-commit")
@@ -77,7 +77,7 @@ fn update_commit_from_remote() {
 fn update_commit_from_remote_with_local_changes() {
     let remote_repo = RemoteRepo::new();
     let local_repo = remote_repo
-        .clone()
+        .clone_repo()
         .create_file("File1", "Hello, World!")
         .commit_all("commit1")
         .push()
@@ -99,7 +99,7 @@ fn update_commit_from_remote_with_local_changes() {
         .commit_all_amend();
 
     {
-        let another_local_clone = remote_repo.clone();
+        let another_local_clone = remote_repo.clone_repo();
 
         let _another_local_clone = another_local_clone
             .checkout("pr-commit")
@@ -179,7 +179,7 @@ fn update_commit_from_remote_with_local_changes() {
 fn sync_multiple_commits() {
     let remote_repo = RemoteRepo::new();
     let local_repo = remote_repo
-        .clone()
+        .clone_repo()
         .create_file("File1", "Hello, World!")
         .commit_all("commit1")
         .push()
@@ -208,7 +208,7 @@ fn sync_multiple_commits() {
     )
     .unwrap();
 
-    let another_local_clone = remote_repo.clone();
+    let another_local_clone = remote_repo.clone_repo();
 
     let another_local_clone = another_local_clone
         .checkout("first-pr")

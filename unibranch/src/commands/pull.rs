@@ -36,21 +36,12 @@ where
     for original_commit in repo.unpushed_commits().unwrap() {
         match original_commit {
             MainCommit::Tracked(tracked_commit) => {
-                let local_branch_head = tracked_commit.local_branch_head()?;
-                //First, update 'local' branch with local changes.
-                //TODO: Need to handle case where main commit has been rebased on master
-                let local_branch_head = repo
-                    .cherry_pick_commit(
-                        tracked_commit.as_commit(),
-                        Some(local_branch_head.clone()),
-                    )?
-                    .unwrap_or(local_branch_head);
 
-                let local_branch_head_id = local_branch_head.id();
-                drop(local_branch_head);
-                let tracked_commit = tracked_commit.update_remote(local_branch_head_id);
+                let new_parent_1 = tracked_commit
+                    .update_local_branch_head()?
+                    .merge_remote_head(Some(&parent_commit))?
+                    .sync_with_main()?;
 
-                let new_parent_1 = tracked_commit.update(&parent_commit)?;
                 if !options.dry_run {
                     Command::new("git")
                         .current_dir(repo_dir.as_ref())
