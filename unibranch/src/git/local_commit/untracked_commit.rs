@@ -5,13 +5,13 @@ use crate::git::{local_commit::CommitMetadata, GitRepo};
 
 use super::TrackedCommit;
 
-pub struct LocalCommit<'repo> {
+pub struct UnTrackedCommit<'repo> {
     repo: &'repo Repository,
     git_repo: &'repo GitRepo,
     commit: Commit<'repo>,
 }
 
-impl<'repo> LocalCommit<'repo> {
+impl<'repo> UnTrackedCommit<'repo> {
     pub fn new(repo: &'repo Repository, git_repo: &'repo GitRepo, commit: Commit<'repo>) -> Self {
         Self {
             repo,
@@ -45,7 +45,7 @@ impl<'repo> LocalCommit<'repo> {
             )?;
             self.repo.find_commit(new_commit_id)?
         };
-        Ok(LocalCommit {
+        Ok(UnTrackedCommit {
             repo: self.repo,
             git_repo: self.git_repo,
             commit: new_commit,

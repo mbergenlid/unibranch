@@ -11,10 +11,10 @@ mod tests;
 mod tracked_commit;
 pub use tracked_commit::TrackedCommit;
 mod untracked_commit;
-pub use untracked_commit::LocalCommit;
+pub use untracked_commit::UnTrackedCommit;
 
 pub enum MainCommit<'repo> {
-    UnTracked(LocalCommit<'repo>),
+    UnTracked(UnTrackedCommit<'repo>),
     Tracked(TrackedCommit<'repo>),
 }
 
@@ -28,7 +28,7 @@ impl<'repo> MainCommit<'repo> {
         if let Err(error) = res {
             match error.code() {
                 git2::ErrorCode::NotFound => {
-                    return Ok(MainCommit::UnTracked(LocalCommit::new(
+                    return Ok(MainCommit::UnTracked(UnTrackedCommit::new(
                         repo, git_repo, commit,
                     )))
                 }
@@ -44,7 +44,7 @@ impl<'repo> MainCommit<'repo> {
                 repo, git_repo, commit, meta_data,
             )))
         } else {
-            Ok(MainCommit::UnTracked(LocalCommit::new(
+            Ok(MainCommit::UnTracked(UnTrackedCommit::new(
                 repo, git_repo, commit,
             )))
         }
