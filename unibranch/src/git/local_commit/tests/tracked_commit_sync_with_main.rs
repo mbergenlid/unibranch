@@ -18,8 +18,6 @@ use super::setup_repo;
 //                 *------/
 //
 
-
-
 //
 //
 //
@@ -43,7 +41,10 @@ fn nothing_should_happen_if_origin_has_not_changed() {
 
     let new_tracked_commit = tracked_commit.clone().sync_with_main().unwrap();
 
-    assert_eq!(new_tracked_commit.as_commit().id(), tracked_commit.as_commit().id());
+    assert_eq!(
+        new_tracked_commit.as_commit().id(),
+        tracked_commit.as_commit().id()
+    );
 }
 
 //
@@ -62,12 +63,12 @@ fn nothing_should_happen_if_origin_has_not_changed() {
 //
 #[test]
 fn new_changes_main_should_be_merged_in() {
-
     let remote = RemoteRepo::new();
     let local = setup_repo(&remote);
 
     {
-        remote.clone_repo()
+        remote
+            .clone_repo()
             .create_file("file3", "Some other feature")
             .commit_all("other feature")
             .push();
@@ -82,5 +83,8 @@ fn new_changes_main_should_be_merged_in() {
 
     let new_tracked_commit = tracked_commit.clone().sync_with_main().unwrap();
 
-    local.assert_tracked_commit_in_sync(new_tracked_commit.as_commit().id(), new_tracked_commit.meta_data().remote_commit.unwrap());
+    local.assert_tracked_commit_in_sync(
+        new_tracked_commit.as_commit().id(),
+        new_tracked_commit.meta_data().remote_commit.unwrap(),
+    );
 }

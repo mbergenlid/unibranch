@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{Context, Ok};
 use clap::builder::OsStr;
-use git2::{Commit, Index, Note, Oid, Repository, RepositoryOpenFlags};
+use git2::{Commit, Oid, Repository, RepositoryOpenFlags};
 
 use self::local_commit::{CommitMetadata, MainCommit};
 
@@ -51,26 +51,6 @@ impl GitRepo {
         })
     }
 
-    pub fn find_local_branch_commit(&self, local_commit: &Commit) -> anyhow::Result<Commit> {
-        let note = self.find_note_for_commit(local_commit.id())?;
-        let commit_meta_data: CommitMetadata = note
-            .as_ref()
-            .and_then(|n| n.message().expect("Not valid UTF-8").try_into().ok())
-            .unwrap();
-
-        let local_branch_commit = if let Some(remote_commit_id) = commit_meta_data.remote_commit {
-            self.repo.find_commit(remote_commit_id)?
-        } else {
-            self.repo
-                .find_branch(
-                    &format!("origin/{}", commit_meta_data.remote_branch_name),
-                    git2::BranchType::Remote,
-                )?
-                .get()
-                .peel_to_commit()?
-        };
-        Ok(local_branch_commit)
-    }
 
     pub fn base_commit(&self) -> anyhow::Result<Commit> {
         let remote_ref = format!("refs/remotes/origin/{}", self.current_branch_name);
@@ -108,43 +88,6 @@ impl GitRepo {
         Ok(MainCommit::new(self, &self.repo, commit)?)
     }
 
-    pub fn find_meta_data_for_commit(
-        &self,
-        commit_id: Oid,
-    ) -> anyhow::Result<Option<CommitMetadata>> {
-        if let Some(note) = self.find_note_for_commit(commit_id)? {
-            if let Some(msg) = note.message() {
-                let mut commit_meta_data: CommitMetadata = msg.parse()?;
-                if commit_meta_data.remote_commit.is_none() {
-                    let id = self
-                        .repo
-                        .find_branch(
-                            &format!("origin/{}", commit_meta_data.remote_branch_name),
-                            git2::BranchType::Remote,
-                        )?
-                        .get()
-                        .peel_to_commit()?
-                        .id();
-                    commit_meta_data.remote_commit.replace(id);
-                }
-                return Ok(Some(commit_meta_data));
-            }
-        }
-        Ok(None)
-    }
-
-    pub fn find_note_for_commit(&self, commit_id: Oid) -> anyhow::Result<Option<Note>> {
-        let res = self.repo.find_note(None, commit_id);
-        if let Err(error) = res {
-            match error.code() {
-                git2::ErrorCode::NotFound => return Ok(None),
-                _ => anyhow::bail!(error),
-            }
-        }
-        let note = res.expect("Already checked for error above");
-        Ok(Some(note))
-    }
-
     pub fn save_meta_data(
         &self,
         commit: &Commit,
@@ -175,50 +118,6 @@ impl GitRepo {
         Ok(())
     }
 
-    pub fn rewrite_local_commit(
-        &self,
-        commit: &Commit,
-        config: &CommitMetadata,
-    ) -> anyhow::Result<()> {
-        let branch = self
-            .repo
-            .reference_to_annotated_commit(&self.repo.head()?)?;
-        let remote = self.repo.reference_to_annotated_commit(
-            self.repo
-                .find_branch(
-                    &format!("origin/{}", &self.current_branch_name),
-                    git2::BranchType::Remote,
-                )?
-                .get(),
-        )?;
-        let mut rebase = self.repo.rebase(Some(&branch), Some(&remote), None, None)?;
-
-        let committer = self.repo.signature().or_else(|_| {
-            git2::Signature::now(
-                String::from_utf8_lossy(commit.committer().name_bytes()).as_ref(),
-                String::from_utf8_lossy(commit.committer().email_bytes()).as_ref(),
-            )
-        })?;
-        while let Some(op) = rebase.next() {
-            let op = op?;
-            if op.id() == commit.id() {
-                rebase.commit(
-                    None,
-                    &committer,
-                    Some(&format!(
-                        "{}\nmeta:\n{}",
-                        commit.message().expect("No commmit message"),
-                        config,
-                    )),
-                )?;
-            } else {
-                rebase.commit(None, &committer, None)?;
-            }
-        }
-        let _ = rebase.finish(None);
-        Ok(())
-    }
-
     pub fn unpushed_commits(&self) -> anyhow::Result<Vec<MainCommit>> {
         let mut walk = self.repo.revwalk()?;
         walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
@@ -230,115 +129,6 @@ impl GitRepo {
             .map(|c| MainCommit::new(self, &self.repo, c))
             .collect();
         Ok(result?)
-    }
-
-    pub fn cherry_pick_commit(
-        &self,
-        original_commit: &Commit,
-        pr_head: Option<Commit>,
-    ) -> anyhow::Result<Option<Commit>> {
-        let base_commit = self.repo.find_commit(self.base_commit()?.id())?;
-        let complete_index = self
-            .repo
-            .cherrypick_commit(original_commit, &base_commit, 0, None)
-            .context("Cherry picking directly on master")?;
-
-        if complete_index.has_conflicts() {
-            anyhow::bail!("There are conflicts");
-        }
-        let parent_commit = pr_head.unwrap_or(base_commit);
-        let diff = self.repo.diff_tree_to_index(
-            Some(&parent_commit.tree()?),
-            Some(&complete_index),
-            None,
-        )?;
-
-        let first_pr_commit = {
-            let mut walk = self.repo.revwalk()?;
-            walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
-            walk.push(parent_commit.id())?;
-            walk.hide(self.base_commit()?.id())?;
-            walk.next().and_then(|r| r.ok())
-        };
-
-        if let Some(first_commit_id) = first_pr_commit {
-            let first_commit = self.repo.find_commit(first_commit_id)?;
-            if first_commit.message() != original_commit.message() {
-                println!("Commit message changed, need to update");
-            }
-        }
-
-        if diff.deltas().len() == 0 {
-            println!("Already up to date");
-            Ok(None)
-        } else {
-            let index = self
-                .repo
-                .apply_to_tree(&parent_commit.tree().unwrap(), &diff, None)
-                .context("Apply diff to parent")?;
-
-            if parent_commit.id() == self.base_commit()?.id() {
-                Ok(Some(self.commit_index(
-                    index,
-                    original_commit,
-                    parent_commit.id(),
-                    original_commit.message().expect("No commit message"),
-                )?))
-            } else {
-                Ok(Some(self.commit_index(
-                    index,
-                    original_commit,
-                    parent_commit.id(),
-                    &format!("Fixup! {}", parent_commit.id()),
-                )?))
-            }
-        }
-    }
-
-    fn commit_index(
-        &self,
-        mut index: Index,
-        original_commit: &Commit,
-        parent: Oid,
-        message: &str,
-    ) -> anyhow::Result<Commit> {
-        if index.has_conflicts() {
-            for c in index.conflicts()? {
-                let c = c?;
-                println!("Conclict {:?}", CString::new(c.our.unwrap().path).unwrap())
-            }
-            anyhow::bail!(
-                "This commit cannot be cherry-picked on {}",
-                self.base_commit()?.id()
-            );
-        }
-
-        let tree = index
-            .write_tree_to(&self.repo)
-            .context("Write index to tree")?;
-        println!("Writing tree of cherry-pick {}", tree);
-        let tree = self
-            .repo
-            .find_tree(tree)
-            .context("Can not find tree just created")?;
-
-        let base_commit = self.repo.find_commit(parent)?;
-        let committer = self.repo.signature().or_else(|_| {
-            git2::Signature::now(
-                String::from_utf8_lossy(original_commit.committer().name_bytes()).as_ref(),
-                String::from_utf8_lossy(original_commit.committer().email_bytes()).as_ref(),
-            )
-        })?;
-
-        let author = git2::Signature::now(
-            String::from_utf8_lossy(original_commit.author().name_bytes()).as_ref(),
-            String::from_utf8_lossy(original_commit.author().email_bytes()).as_ref(),
-        )?;
-        let cherry_picked_commit = self
-            .repo
-            .commit(None, &author, &committer, message, &tree, &[&base_commit])
-            .context("Committing")?;
-        Ok(self.repo.find_commit(cherry_picked_commit)?)
     }
 
     pub fn update_current_branch(&self, new_head: &Commit) -> anyhow::Result<()> {
@@ -355,9 +145,7 @@ impl GitRepo {
     }
 
     pub fn merge(&self, commit1: &Commit, commit2: &Commit) -> anyhow::Result<Oid> {
-        let mut merge_index =
-            self.repo
-                .merge_commits(commit1, commit2, None)?;
+        let mut merge_index = self.repo.merge_commits(commit1, commit2, None)?;
 
         //self.repo.merge_analysis_for_ref
         if merge_index.has_conflicts() {
@@ -373,11 +161,7 @@ impl GitRepo {
             //)?;
             //self.git_repo
             //    .save_merge_state(&base_commit, &remote_commit)?;
-            anyhow::bail!(
-                "Unable to merge {} and {}",
-                commit1.id(),
-                commit2.id()
-            );
+            anyhow::bail!("Unable to merge {} and {}", commit1.id(), commit2.id());
         }
         if merge_index.is_empty() {
             anyhow::bail!("Index is empty");

@@ -124,10 +124,7 @@ impl<'a> TestRepoWithRemote<'a> {
         P: AsRef<Path>,
     {
         let file_path = self.local_repo_dir.path().join(path);
-        let mut tmp_file = OpenOptions::new()
-            .append(true)
-            .open(file_path)
-            .unwrap();
+        let mut tmp_file = OpenOptions::new().append(true).open(file_path).unwrap();
         writeln!(tmp_file, "{}", content).unwrap();
         self
     }
@@ -438,13 +435,7 @@ impl<'a> TestRepoWithRemote<'a> {
     #[allow(dead_code)]
     pub fn assert_diff(&self, rev1: &str, rev2: &str, expected: &str) {
         let actual = String::from_utf8(self.diff(rev1, rev2).stdout).unwrap();
-        assert_eq!(
-            actual,
-            expected,
-            "comparing diff {} -> {}",
-            rev1,
-            rev2,
-        )
+        assert_eq!(actual, expected, "comparing diff {} -> {}", rev1, rev2,)
     }
 
     pub fn assert_tracked_commit_in_sync(&self, tracked_commit_id: Oid, remote_head: Oid) {

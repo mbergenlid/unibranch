@@ -2,7 +2,6 @@ use anyhow::Context;
 use anyhow::Ok;
 use git2::{Branch, Commit, FileFavor, MergeOptions, Oid, Repository};
 
-
 use super::CommitMetadata;
 use super::GitRepo;
 
@@ -144,7 +143,7 @@ impl<'repo> TrackedCommit<'repo> {
     //                 | /
     //     (origin)    *
     pub fn merge_remote_head(self, new_parent: Option<&Commit>) -> anyhow::Result<Self> {
-        let remote_branch_commit = self.remote_branch()?.get().peel_to_commit()?; 
+        let remote_branch_commit = self.remote_branch()?.get().peel_to_commit()?;
         let remote_branch_head = remote_branch_commit.id();
         let local_branch_head = self.meta_data().remote_commit.unwrap();
         let merge_base = self
@@ -158,7 +157,9 @@ impl<'repo> TrackedCommit<'repo> {
             return Ok(self);
         } else {
             let local_branch_commit = self.repo.find_commit(local_branch_head)?;
-            let oid = self.git_repo.merge(&local_branch_commit, &remote_branch_commit)?;
+            let oid = self
+                .git_repo
+                .merge(&local_branch_commit, &remote_branch_commit)?;
             self.repo.find_commit(oid)?
         };
 
@@ -195,12 +196,14 @@ impl<'repo> TrackedCommit<'repo> {
         drop(remote_branch_commit);
         let new_commit = self.repo.find_commit(new_commit)?;
         let new_meta_data = self.meta_data.update_commit(new_remote_commit.id());
-        self.git_repo.save_meta_data(
-            &new_commit,
-            &new_meta_data,
-        )?;
+        self.git_repo.save_meta_data(&new_commit, &new_meta_data)?;
 
-        Ok(TrackedCommit::new(self.repo, self.git_repo, new_commit, new_meta_data))
+        Ok(TrackedCommit::new(
+            self.repo,
+            self.git_repo,
+            new_commit,
+            new_meta_data,
+        ))
     }
 
     //
@@ -219,15 +222,22 @@ impl<'repo> TrackedCommit<'repo> {
     //
     pub fn sync_with_main(mut self) -> anyhow::Result<Self> {
         let local_branch_head = self.meta_data().remote_commit.unwrap();
-        let merge_base = self.repo.merge_base(local_branch_head, self.as_commit().id())?;
-        if dbg!(merge_base) == dbg!(self.git_repo.base_commit()?.id()) || merge_base == self.commit.id() {
+        let merge_base = self
+            .repo
+            .merge_base(local_branch_head, self.as_commit().id())?;
+        if dbg!(merge_base) == dbg!(self.git_repo.base_commit()?.id())
+            || merge_base == self.commit.id()
+        {
             Ok(self)
         } else {
             let local_branch_commit = self.repo.find_commit(local_branch_head)?;
-            let merge_oid = self.git_repo.merge(&self.git_repo.base_commit()?, &local_branch_commit)?;
+            let merge_oid = self
+                .git_repo
+                .merge(&self.git_repo.base_commit()?, &local_branch_commit)?;
 
             self.meta_data.remote_commit.replace(merge_oid);
-            self.git_repo.save_meta_data(self.as_commit(), &self.meta_data)?;
+            self.git_repo
+                .save_meta_data(self.as_commit(), &self.meta_data)?;
             Ok(self)
         }
     }
@@ -240,5 +250,4 @@ impl<'repo> TrackedCommit<'repo> {
             meta_data: self.meta_data.update_commit(new_remote_head),
         }
     }
-
 }

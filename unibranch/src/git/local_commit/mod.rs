@@ -10,6 +10,8 @@ mod tests;
 
 mod tracked_commit;
 pub use tracked_commit::TrackedCommit;
+mod untracked_commit;
+pub use untracked_commit::LocalCommit;
 
 pub enum MainCommit<'repo> {
     UnTracked(LocalCommit<'repo>),
@@ -26,11 +28,9 @@ impl<'repo> MainCommit<'repo> {
         if let Err(error) = res {
             match error.code() {
                 git2::ErrorCode::NotFound => {
-                    return Ok(MainCommit::UnTracked(LocalCommit {
-                        repo,
-                        git_repo,
-                        commit,
-                    }))
+                    return Ok(MainCommit::UnTracked(LocalCommit::new(
+                        repo, git_repo, commit,
+                    )))
                 }
                 _ => return Err(error),
             }
@@ -44,52 +44,17 @@ impl<'repo> MainCommit<'repo> {
                 repo, git_repo, commit, meta_data,
             )))
         } else {
-            Ok(MainCommit::UnTracked(LocalCommit {
-                repo,
-                git_repo,
-                commit,
-            }))
+            Ok(MainCommit::UnTracked(LocalCommit::new(
+                repo, git_repo, commit,
+            )))
         }
     }
 
     pub fn id(&self) -> Oid {
         match self {
-            MainCommit::UnTracked(c) => c.commit.id(),
+            MainCommit::UnTracked(c) => c.as_commit().id(),
             MainCommit::Tracked(c) => c.as_commit().id(),
         }
-    }
-}
-
-pub struct LocalCommit<'repo> {
-    repo: &'repo Repository,
-    git_repo: &'repo GitRepo,
-    commit: Commit<'repo>,
-}
-
-impl<'repo> LocalCommit<'repo> {
-    pub fn as_commit(&self) -> &Commit {
-        &self.commit
-    }
-
-    pub fn commit(self) -> Commit<'repo> {
-        self.commit
-    }
-
-    pub(crate) fn rebase(self, parent_commit: &Commit<'_>) -> anyhow::Result<Self> {
-        let index = self
-            .repo
-            .cherrypick_commit(self.as_commit(), parent_commit, 0, None)?;
-        let new_commit = self.git_repo.commit_index(
-            index,
-            self.as_commit(),
-            parent_commit.id(),
-            self.commit.message().expect("Not valid UTF-8 message"),
-        )?;
-        Ok(LocalCommit {
-            repo: self.repo,
-            git_repo: self.git_repo,
-            commit: new_commit,
-        })
     }
 }
 

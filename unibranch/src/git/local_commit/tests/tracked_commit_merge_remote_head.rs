@@ -1,11 +1,10 @@
 use indoc::indoc;
 use test_repo::RemoteRepo;
 
-use pretty_assertions::assert_eq;
 use super::setup_repo;
+use pretty_assertions::assert_eq;
 
 use crate::git::GitRepo;
-
 
 //          *                                        *
 //          |                                        |
@@ -47,7 +46,6 @@ fn should_not_merge_if_remote_commit_is_descendant_of_local() {
 
     local.assert_note(&rev_str, tracked_commit.meta_data());
 
-
     let expected_diff = indoc! {"
         diff --git a/file2 b/file2
         new file mode 100644
@@ -58,9 +56,16 @@ fn should_not_merge_if_remote_commit_is_descendant_of_local() {
         +another file
         +Some fixes
     "};
-    local.assert_diff(&format!("{}^", rev_str), &format!("{}", rev_str), expected_diff);
+    local.assert_diff(
+        &format!("{}^", rev_str),
+        &format!("{}", rev_str),
+        expected_diff,
+    );
 
-    local.assert_tracked_commit_in_sync(tracked_commit.as_commit().id(), tracked_commit.meta_data().remote_commit.unwrap());
+    local.assert_tracked_commit_in_sync(
+        tracked_commit.as_commit().id(),
+        tracked_commit.meta_data().remote_commit.unwrap(),
+    );
 }
 
 //
@@ -98,7 +103,10 @@ fn should_not_merge_if_local_commit_is_descendant_of_remote() {
 
     assert_eq!(tracked_commit.meta_data().remote_commit, local_branch_head);
 
-    local.assert_tracked_commit_in_sync(tracked_commit.as_commit().id(), tracked_commit.meta_data().remote_commit.unwrap());
+    local.assert_tracked_commit_in_sync(
+        tracked_commit.as_commit().id(),
+        tracked_commit.meta_data().remote_commit.unwrap(),
+    );
 }
 //
 //          *                                        *
@@ -159,8 +167,11 @@ fn test_merge() {
             +++ b/file3
             @@ -0,0 +1 @@
             +Some fixes in file3
-        "}
+        "},
     );
 
-    local.assert_tracked_commit_in_sync(tracked_commit.as_commit().id(), tracked_commit.meta_data().remote_commit.unwrap());
+    local.assert_tracked_commit_in_sync(
+        tracked_commit.as_commit().id(),
+        tracked_commit.meta_data().remote_commit.unwrap(),
+    );
 }

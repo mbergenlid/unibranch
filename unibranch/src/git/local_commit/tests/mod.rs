@@ -5,8 +5,8 @@ use crate::commands::create;
 use super::{MainCommit, TrackedCommit};
 
 mod tracked_commit_merge_remote_head;
-mod tracked_commit_update_local_branch_head;
 mod tracked_commit_sync_with_main;
+mod tracked_commit_update_local_branch_head;
 
 fn tracked(commit: MainCommit) -> TrackedCommit {
     match commit {

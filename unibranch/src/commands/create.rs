@@ -6,7 +6,7 @@ use std::{
 use anyhow::Context;
 
 use crate::git::{
-    local_commit::{CommitMetadata, MainCommit},
+    local_commit::MainCommit,
     GitRepo,
 };
 
@@ -32,64 +32,30 @@ where
         MainCommit::Tracked(_) => anyhow::bail!("Commit is already tracked"),
     };
 
-    let branch_name = {
-        let msg = untracked_commit
-            .as_commit()
-            .message()
-            .unwrap_or("No commit message");
-        let title = msg.lines().next().expect("Must have at least one line");
-        title
-            .replace(
-                |c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '_'),
-                "-",
-            )
-            .to_ascii_lowercase()
-    };
-
-    let pr_commit = git_repo.find_head_of_remote_branch(&branch_name);
-    if pr_commit.is_some() {
-        anyhow::bail!(format!("Remote branch '{}' already exist", branch_name));
+    let tracked_commit = untracked_commit.track()?;
+    if config.dry_run {
+        println!(
+            "Dry run mode, will not push {} to remote branch 'origin/{}'",
+            tracked_commit.meta_data().remote_commit.unwrap(),
+            &tracked_commit.meta_data().remote_branch_name,
+        );
+        return Ok(());
     }
-    match git_repo.cherry_pick_commit(untracked_commit.as_commit(), pr_commit) {
-        Ok(Some(cherry_picked_commit)) => {
-            let mut cmd = Command::new("git");
-            if config.dry_run {
-                println!(
-                    "Dry run mode, will not push {} to remote branch 'origin/{}'",
-                    cherry_picked_commit.id(),
-                    branch_name,
-                );
-                return Ok(());
-            }
-            let new_meta_data = CommitMetadata {
-                remote_branch_name: branch_name.into(),
-                remote_commit: Some(cherry_picked_commit.id()),
-            };
-            git_repo.save_meta_data(untracked_commit.as_commit(), &new_meta_data)?;
-            cmd.current_dir(repo_dir.as_ref())
-                .arg("push")
-                .arg("--no-verify")
-                .arg("--force-with-lease")
-                .arg("--")
-                .arg("origin")
-                .arg(format!(
-                    "{}:refs/heads/{}",
-                    cherry_picked_commit.id(),
-                    new_meta_data.remote_branch_name
-                ));
-
-            let _exit_status = cmd
-                .stderr(Stdio::null())
-                .stdout(Stdio::null())
-                .spawn()?
-                .wait()?;
-        }
-        Ok(None) => todo!(),
-        Err(e) => {
-            eprintln!("{:?}", e);
-            eprintln!("Diff doesn't apply cleanly on master")
-        }
-    };
+    Command::new("git")
+        .current_dir(repo_dir.as_ref())
+        .arg("push")
+        .arg("--no-verify")
+        .arg("--force-with-lease")
+        .arg("--")
+        .arg("origin")
+        .arg(format!(
+            "{}:refs/heads/{}",
+            tracked_commit.meta_data().remote_commit.unwrap(),
+            &tracked_commit.meta_data().remote_branch_name
+        ))
+        .stderr(Stdio::null())
+        .stdout(Stdio::null())
+        .status()?;
 
     Ok(())
 }

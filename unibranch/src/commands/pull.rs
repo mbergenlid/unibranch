@@ -36,7 +36,6 @@ where
     for original_commit in repo.unpushed_commits().unwrap() {
         match original_commit {
             MainCommit::Tracked(tracked_commit) => {
-
                 let new_parent_1 = tracked_commit
                     .update_local_branch_head()?
                     .merge_remote_head(Some(&parent_commit))?
