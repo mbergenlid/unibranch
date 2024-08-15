@@ -10,6 +10,8 @@ anyhow = "1.0.81"
 clap = { version = "4.5.4", features = ["derive"] }
 git2 = "0.18.3"
 itertools = "0.13.0"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [dev-dependencies]
 test_repo = { path = "../test_repo" }
