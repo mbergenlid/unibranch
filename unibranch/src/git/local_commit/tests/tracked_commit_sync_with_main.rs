@@ -85,6 +85,6 @@ fn new_changes_main_should_be_merged_in() {
 
     local.assert_tracked_commit_in_sync(
         new_tracked_commit.as_commit().id(),
-        new_tracked_commit.meta_data().remote_commit.unwrap(),
+        new_tracked_commit.meta_data().remote_commit,
     );
 }

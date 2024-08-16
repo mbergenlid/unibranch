@@ -66,12 +66,10 @@ fn update_commit_from_remote() {
         "HEAD",
         &CommitMetadata {
             remote_branch_name: std::borrow::Cow::Owned("pr-commit".to_string()),
-            remote_commit: Some(
-                another_local_clone
+            remote_commit: another_local_clone
                     .rev_parse("pr-commit")
                     .parse()
                     .expect("Not a valid object id"),
-            ),
         },
     );
 }
@@ -167,12 +165,10 @@ fn update_commit_from_remote_with_local_changes() {
         "HEAD",
         &CommitMetadata {
             remote_branch_name: std::borrow::Cow::Owned("pr-commit".to_string()),
-            remote_commit: Some(
-                local_repo
+            remote_commit: local_repo
                     .rev_parse("origin/pr-commit")
                     .parse()
                     .expect("Not a valid object id"),
-            ),
         },
     );
 }

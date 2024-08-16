@@ -41,7 +41,7 @@ fn should_not_merge_if_remote_commit_is_descendant_of_local() {
     let rev_str = format!("{}", tracked_commit.as_commit().id());
     assert_eq!(
         tracked_commit.meta_data().remote_commit,
-        Some(remote_branch_head)
+        remote_branch_head
     );
 
     local.assert_note(&rev_str, tracked_commit.meta_data());
@@ -64,7 +64,7 @@ fn should_not_merge_if_remote_commit_is_descendant_of_local() {
 
     local.assert_tracked_commit_in_sync(
         tracked_commit.as_commit().id(),
-        tracked_commit.meta_data().remote_commit.unwrap(),
+        tracked_commit.meta_data().remote_commit,
     );
 }
 
@@ -105,7 +105,7 @@ fn should_not_merge_if_local_commit_is_descendant_of_remote() {
 
     local.assert_tracked_commit_in_sync(
         tracked_commit.as_commit().id(),
-        tracked_commit.meta_data().remote_commit.unwrap(),
+        tracked_commit.meta_data().remote_commit,
     );
 }
 //
@@ -172,6 +172,6 @@ fn test_merge() {
 
     local.assert_tracked_commit_in_sync(
         tracked_commit.as_commit().id(),
-        tracked_commit.meta_data().remote_commit.unwrap(),
+        tracked_commit.meta_data().remote_commit,
     );
 }

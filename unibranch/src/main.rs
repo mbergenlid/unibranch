@@ -2,7 +2,7 @@ use anyhow::Context;
 use clap::{command, Parser, Subcommand};
 use tracing_subscriber::EnvFilter;
 use ubr::{
-    commands::{create, sync, push},
+    commands::{create, push, sync},
     git::{CommandOption, GitRepo},
 };
 

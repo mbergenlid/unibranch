@@ -1,7 +1,10 @@
 use git2::Oid;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use ubr::{commands::{create, sync}, git::GitRepo};
+use ubr::{
+    commands::{create, sync},
+    git::GitRepo,
+};
 
 use test_repo::{RemoteRepo, TestRepoWithRemote};
 
@@ -28,7 +31,6 @@ fn test_update_a_diff() {
     let repo = repo
         .append_file("File1", "Another Hello, World!")
         .commit_all("commit2");
-
 
     let commit = repo.find_commit(0).id();
     create::execute(push_options(Some(commit)), git_repo(&repo)).unwrap();

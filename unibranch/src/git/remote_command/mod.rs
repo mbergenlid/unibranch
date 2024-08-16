@@ -24,8 +24,7 @@ impl<'a> RemoteGitCommand<'a> {
             }
             RemoteGitCommand::DryRun(_) => Ok(println!(
                 "Pushing commit {} to origin/{}",
-                meta_data.remote_commit.unwrap(),
-                meta_data.remote_branch_name
+                meta_data.remote_commit, meta_data.remote_branch_name
             )),
         }
     }
@@ -43,8 +42,7 @@ impl<'a> RemoteGitCommand<'a> {
             .arg("origin")
             .arg(format!(
                 "{}:refs/heads/{}",
-                meta_data.remote_commit.unwrap(),
-                &meta_data.remote_branch_name
+                meta_data.remote_commit, &meta_data.remote_branch_name
             ))
             .stderr(stdio())
             .stdout(stdio())

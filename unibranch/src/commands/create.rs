@@ -2,7 +2,6 @@ use crate::git::{local_commit::MainCommit, GitRepo};
 
 #[derive(clap::Parser, Default)]
 pub struct Options {
-
     pub commit_ref: Option<String>,
 }
 

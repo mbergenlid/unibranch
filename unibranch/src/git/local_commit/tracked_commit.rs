@@ -41,18 +41,7 @@ impl<'repo> TrackedCommit<'repo> {
 
     pub fn local_branch_head(&self) -> anyhow::Result<Commit> {
         let commit_meta_data = &self.meta_data;
-        let local_branch_commit = if let Some(remote_commit_id) = commit_meta_data.remote_commit {
-            self.repo.find_commit(remote_commit_id)?
-        } else {
-            self.repo
-                .find_branch(
-                    &format!("origin/{}", commit_meta_data.remote_branch_name),
-                    git2::BranchType::Remote,
-                )?
-                .get()
-                .peel_to_commit()?
-        };
-        Ok(local_branch_commit)
+        Ok(self.repo.find_commit(commit_meta_data.remote_commit)?)
     }
 
     pub fn as_commit(&self) -> &Commit {
@@ -83,9 +72,7 @@ impl<'repo> TrackedCommit<'repo> {
     //              | /
     //  (origin)    *
     pub fn update_local_branch_head(self) -> Result<Self, git2::Error> {
-        let remote_commit = self
-            .repo
-            .find_commit(self.meta_data().remote_commit.unwrap())?;
+        let remote_commit = self.repo.find_commit(self.meta_data().remote_commit)?;
 
         let mut index = self.repo.cherrypick_commit(
             self.as_commit(),
@@ -145,7 +132,7 @@ impl<'repo> TrackedCommit<'repo> {
     pub fn merge_remote_head(self, new_parent: Option<&Commit>) -> anyhow::Result<Self> {
         let remote_branch_commit = self.remote_branch()?.get().peel_to_commit()?;
         let remote_branch_head = remote_branch_commit.id();
-        let local_branch_head = self.meta_data().remote_commit.unwrap();
+        let local_branch_head = self.meta_data().remote_commit;
         let merge_base = self
             .repo
             .merge_base(local_branch_head, remote_branch_head)?;
@@ -221,7 +208,7 @@ impl<'repo> TrackedCommit<'repo> {
     //                 *------/
     //
     pub fn sync_with_main(mut self) -> anyhow::Result<Self> {
-        let local_branch_head = self.meta_data().remote_commit.unwrap();
+        let local_branch_head = self.meta_data().remote_commit;
         let merge_base = self
             .repo
             .merge_base(local_branch_head, self.as_commit().id())?;
@@ -235,7 +222,7 @@ impl<'repo> TrackedCommit<'repo> {
                 .git_repo
                 .merge(&self.git_repo.base_commit()?, &local_branch_commit)?;
 
-            self.meta_data.remote_commit.replace(merge_oid);
+            let _ = std::mem::replace(&mut self.meta_data.remote_commit, merge_oid);
             self.git_repo
                 .save_meta_data(self.as_commit(), &self.meta_data)?;
             Ok(self)

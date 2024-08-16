@@ -87,7 +87,7 @@ impl<'repo> UnTrackedCommit<'repo> {
         //Create meta_data
         let meta_data = CommitMetadata {
             remote_branch_name: std::borrow::Cow::Owned(branch_name),
-            remote_commit: Some(remote_commit),
+            remote_commit,
         };
         self.git_repo.save_meta_data(self.as_commit(), &meta_data)?;
         Ok(TrackedCommit::new(

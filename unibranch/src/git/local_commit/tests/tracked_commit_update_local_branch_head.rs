@@ -41,7 +41,7 @@ fn test_simple_update() {
     };
     let tracked_commit = tracked_commit.update_local_branch_head().unwrap();
 
-    let new_commit = format!("{}", tracked_commit.meta_data().remote_commit.unwrap());
+    let new_commit = format!("{}", tracked_commit.meta_data().remote_commit);
 
     let actual_diff = String::from_utf8(local.diff("origin/master", &new_commit).stdout)
         .expect("Output of diff is not valid UTF-8");
@@ -99,7 +99,7 @@ fn test_update_local() {
     };
     let tracked_commit = tracked_commit.update_local_branch_head().unwrap();
 
-    let new_commit = format!("{}", tracked_commit.meta_data().remote_commit.unwrap());
+    let new_commit = format!("{}", tracked_commit.meta_data().remote_commit);
 
     let actual_diff = String::from_utf8(local.diff("origin/master", &new_commit).stdout)
         .expect("Output of diff is not valid UTF-8");
@@ -160,7 +160,7 @@ fn test_update_with_a_rebase_first() {
     };
     let tracked_commit = tracked_commit.update_local_branch_head().unwrap();
 
-    let new_commit = format!("{}", tracked_commit.meta_data().remote_commit.unwrap());
+    let new_commit = format!("{}", tracked_commit.meta_data().remote_commit);
 
     let actual_diff =
         String::from_utf8(local.diff(&format!("{}^^", new_commit), &new_commit).stdout)
@@ -202,11 +202,11 @@ fn nothing_should_happen_if_no_changes() {
     let git_repo = GitRepo::open(local.local_repo_dir.path()).unwrap();
 
     let tracked_commit = tracked(git_repo.find_unpushed_commit("HEAD").unwrap());
-    let original_branch_head = tracked_commit.meta_data().remote_commit.unwrap();
+    let original_branch_head = tracked_commit.meta_data().remote_commit;
     let new_tracked_commit = tracked_commit.update_local_branch_head().unwrap();
 
     assert_eq!(
-        new_tracked_commit.meta_data().remote_commit.unwrap(),
+        new_tracked_commit.meta_data().remote_commit,
         original_branch_head
     );
 }
