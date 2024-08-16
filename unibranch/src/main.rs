@@ -1,13 +1,22 @@
+use anyhow::Context;
 use clap::{command, Parser, Subcommand};
-use tracing::{debug, info};
 use tracing_subscriber::EnvFilter;
-use ubr::commands::{create, pull, push};
+use ubr::{
+    commands::{create, pull, push},
+    git::{CommandOption, GitRepo},
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+
+    #[arg(short, long)]
+    quiet: bool,
+
+    #[arg(short, long)]
+    dry_run: bool,
 }
 
 #[derive(Subcommand)]
@@ -29,10 +38,18 @@ fn main() -> anyhow::Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
     let cli = Cli::parse();
 
+    let remote_option = if cli.dry_run {
+        CommandOption::DryRun
+    } else if cli.quiet {
+        CommandOption::Silent
+    } else {
+        CommandOption::Default
+    };
+    let git_repo = GitRepo::open_with_remote(".", remote_option).context("Opening GIT repo")?;
 
     match cli.command {
-        Commands::Create(config) => create::execute(config, ".")?,
-        Commands::Pull(config) => pull::execute(config, ".")?,
+        Commands::Create(config) => create::execute(config, git_repo)?,
+        Commands::Pull(config) => pull::execute(config, git_repo)?,
         Commands::Push => push::execute(".")?,
     };
     Ok(())

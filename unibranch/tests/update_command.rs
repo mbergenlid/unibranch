@@ -1,9 +1,16 @@
 use git2::Oid;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use ubr::commands::{create, pull};
+use ubr::{
+    commands::{create, pull},
+    git::GitRepo,
+};
 
-use test_repo::RemoteRepo;
+use test_repo::{RemoteRepo, TestRepoWithRemote};
+
+fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
+    GitRepo::open(value.local_repo_dir.path()).unwrap()
+}
 
 fn push_options(commit_ref: Option<Oid>) -> create::Options {
     create::Options {
@@ -26,10 +33,8 @@ fn test_update_a_diff() {
         .append_file("File1", "Another Hello, World!")
         .commit_all("commit2");
 
-    let current_dir = repo.local_repo_dir.path();
-
     let commit = repo.find_commit(0).id();
-    create::execute(push_options(Some(commit)), current_dir).unwrap();
+    create::execute(push_options(Some(commit)), git_repo(&repo)).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());
@@ -51,7 +56,7 @@ fn test_update_a_diff() {
         .append_file("File1", "Some PR review fixes")
         .commit_all_amend();
 
-    pull::execute(pull::Options::default(), repo.local_repo_dir.path()).unwrap();
+    pull::execute(pull::Options::default(), git_repo(&repo)).unwrap();
 
     //Verify the diff now.
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
@@ -110,10 +115,8 @@ fn test_a_more_complex_update() {
         .append_file("File1", "Another Hello, World!")
         .commit_all("commit2");
 
-    let current_dir = repo.local_repo_dir.path();
-
     let commit = repo.find_commit(0).id();
-    create::execute(push_options(Some(commit)), current_dir).unwrap();
+    create::execute(push_options(Some(commit)), git_repo(&repo)).unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());
@@ -143,7 +146,7 @@ fn test_a_more_complex_update() {
         )
         .commit_all_fixup(unrelated_commit);
 
-    pull::execute(pull::Options::default(), repo.local_repo_dir.path()).unwrap();
+    pull::execute(pull::Options::default(), git_repo(&repo)).unwrap();
 
     //Verify the diff now.
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
@@ -194,7 +197,7 @@ fn test_update_a_commit_and_modify_the_commit_message() {
         .commit_all("commit2");
 
     let head = repo.find_commit(0).id();
-    create::execute(push_options(Some(head)), repo.local_repo_dir.path()).unwrap();
+    create::execute(push_options(Some(head)), git_repo(&repo)).unwrap();
 
     assert_eq!(
         repo.find_note("head"),
@@ -218,7 +221,7 @@ fn test_update_a_commit_and_modify_the_commit_message() {
         .replace("{}", &repo.rev_parse("origin/commit2"))
     );
 
-    pull::execute(pull::Options::default(), repo.local_repo_dir.path()).unwrap();
+    pull::execute(pull::Options::default(), git_repo(&repo)).unwrap();
 
     //Note is still the same
     assert_eq!(

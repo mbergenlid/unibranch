@@ -4,9 +4,13 @@ use crate::{
 };
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use test_repo::RemoteRepo;
+use test_repo::{RemoteRepo, TestRepoWithRemote};
 
 use super::tracked;
+
+fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
+    GitRepo::open(value.local_repo_dir.path()).unwrap()
+}
 
 #[test]
 fn test_simple_update() {
@@ -22,7 +26,7 @@ fn test_simple_update() {
         .create_file("file2", "Hello, World!")
         .commit_all("Commit 1");
 
-    create::execute(create::Options::default(), local.local_repo_dir.path()).unwrap();
+    create::execute(create::Options::default(), git_repo(&local)).unwrap();
 
     let local = local
         .create_file("file3", "Yaay, no conflicts")
@@ -80,7 +84,7 @@ fn test_update_local() {
         .create_file("file2", "Hello, World!")
         .commit_all("Commit 1");
 
-    create::execute(create::Options::default(), local.local_repo_dir.path()).unwrap();
+    create::execute(create::Options::default(), git_repo(&local)).unwrap();
 
     let local = local
         .create_file("file2", "Hello, Conflicting World!")
@@ -131,7 +135,7 @@ fn test_update_with_a_rebase_first() {
         .create_file("file2", "Hello, World!")
         .commit_all("Commit 1");
 
-    create::execute(create::Options::default(), local.local_repo_dir.path()).unwrap();
+    create::execute(create::Options::default(), git_repo(&local)).unwrap();
 
     {
         let other_local = remote.clone_repo();
@@ -193,7 +197,7 @@ fn nothing_should_happen_if_no_changes() {
         .create_file("file2", "Hello, World!")
         .commit_all("Commit 1");
 
-    create::execute(create::Options::default(), local.local_repo_dir.path()).unwrap();
+    create::execute(create::Options::default(), git_repo(&local)).unwrap();
 
     let git_repo = GitRepo::open(local.local_repo_dir.path()).unwrap();
 

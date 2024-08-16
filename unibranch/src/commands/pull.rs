@@ -1,10 +1,3 @@
-use std::{
-    path::Path,
-    process::{Command, Stdio},
-};
-
-use anyhow::Context;
-
 use crate::git::{local_commit::MainCommit, GitRepo};
 
 #[derive(clap::Parser, Default)]
@@ -18,19 +11,8 @@ pub struct Options {
 
 //TODO: Rename to 'update' or 'sync' or something
 
-pub fn execute<P>(options: Options, repo_dir: P) -> anyhow::Result<()>
-where
-    P: AsRef<Path>,
-{
-    let repo = GitRepo::open(repo_dir.as_ref()).context("Opening git repository")?;
-
-    Command::new("git")
-        .current_dir(repo_dir.as_ref())
-        .arg("fetch")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .context("git fetch")?;
+pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
+    repo.remote().fetch()?;
 
     let mut parent_commit = repo.base_commit()?;
     for original_commit in repo.unpushed_commits().unwrap() {
@@ -42,21 +24,7 @@ where
                     .sync_with_main()?;
 
                 if !options.dry_run {
-                    Command::new("git")
-                        .current_dir(repo_dir.as_ref())
-                        .arg("push")
-                        .arg("--no-verify")
-                        .arg("--force-with-lease")
-                        .arg("--")
-                        .arg("origin")
-                        .arg(format!(
-                            "{}:refs/heads/{}",
-                            new_parent_1.local_branch_head()?.id(),
-                            new_parent_1.meta_data().remote_branch_name
-                        ))
-                        .stderr(Stdio::null())
-                        .stdout(Stdio::null())
-                        .status()?;
+                    repo.remote().push(new_parent_1.meta_data())?;
                 } else {
                     println!(
                         "Dry-run: Push {} as new head of remote branch {}",
@@ -73,11 +41,7 @@ where
         }
     }
 
-    if !options.dry_run {
-        repo.update_current_branch(&parent_commit)?;
-    } else {
-        println!("Dry-run: Update HEAD to {}", parent_commit.id());
-    }
+    repo.update_current_branch(&parent_commit)?;
 
     Ok(())
 }

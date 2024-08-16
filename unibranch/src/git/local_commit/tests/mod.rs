@@ -1,6 +1,6 @@
 use test_repo::{RemoteRepo, TestRepoWithRemote};
 
-use crate::commands::create;
+use crate::{commands::create, git::GitRepo};
 
 use super::{MainCommit, TrackedCommit};
 
@@ -28,7 +28,11 @@ fn setup_repo(remote: &RemoteRepo) -> TestRepoWithRemote {
         .commit_all("Commit 1");
 
     {
-        create::execute(create::Options::default(), &local.local_repo_dir).unwrap();
+        create::execute(
+            create::Options::default(),
+            GitRepo::open(local.local_repo_dir.path()).unwrap(),
+        )
+        .unwrap();
     }
     local
 }

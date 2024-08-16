@@ -1,12 +1,16 @@
-use test_repo::RemoteRepo;
+use test_repo::{RemoteRepo, TestRepoWithRemote};
 
 use ubr::{
     commands::{create, pull},
-    git::local_commit::CommitMetadata,
+    git::{local_commit::CommitMetadata, GitRepo},
 };
 
 use indoc::indoc;
 use pretty_assertions::assert_eq;
+
+fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
+    GitRepo::open(value.local_repo_dir.path()).unwrap()
+}
 
 #[test]
 fn update_commit_from_remote() {
@@ -25,7 +29,7 @@ fn update_commit_from_remote() {
             dry_run: false,
             commit_ref: Some("HEAD".to_string()),
         },
-        &local_repo.local_repo_dir,
+        git_repo(&local_repo),
     )
     .expect("Unable to create initial PR");
 
@@ -37,7 +41,7 @@ fn update_commit_from_remote() {
         .commit_all("Fixup")
         .push();
 
-    pull::execute(pull::Options::default(), &local_repo.local_repo_dir)
+    pull::execute(pull::Options::default(), git_repo(&local_repo))
         .expect("Error while running pull command");
 
     let local_commit_diff =
@@ -90,7 +94,7 @@ fn update_commit_from_remote_with_local_changes() {
             dry_run: false,
             commit_ref: Some("HEAD".to_string()),
         },
-        &local_repo.local_repo_dir,
+        git_repo(&local_repo),
     )
     .expect("Unable to create initial PR");
 
@@ -132,7 +136,7 @@ fn update_commit_from_remote_with_local_changes() {
     );
 
     //Perform the actual update
-    pull::execute(pull::Options::default(), &local_repo.local_repo_dir)
+    pull::execute(pull::Options::default(), git_repo(&local_repo))
         .expect("Unable to perform pull command");
 
     let local_commit_diff =
@@ -194,7 +198,7 @@ fn sync_multiple_commits() {
             dry_run: false,
             commit_ref: Some("HEAD".to_string()),
         },
-        &local_repo.local_repo_dir,
+        git_repo(&local_repo),
     )
     .unwrap();
 
@@ -204,7 +208,7 @@ fn sync_multiple_commits() {
             dry_run: false,
             commit_ref: Some("HEAD^".to_string()),
         },
-        &local_repo.local_repo_dir,
+        git_repo(&local_repo),
     )
     .unwrap();
 
@@ -222,7 +226,7 @@ fn sync_multiple_commits() {
         .push()
         .show("HEAD^");
 
-    pull::execute(pull::Options::default(), &local_repo.local_repo_dir).unwrap();
+    pull::execute(pull::Options::default(), git_repo(&local_repo)).unwrap();
 
     let second_pr_diff =
         String::from_utf8(local_repo.diff("master^", "master").stdout).expect("Getting diff");

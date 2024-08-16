@@ -8,18 +8,36 @@ use anyhow::{Context, Ok};
 use clap::builder::OsStr;
 use git2::{Commit, Oid, Repository, RepositoryOpenFlags};
 
-use self::local_commit::{CommitMetadata, MainCommit};
+use self::{
+    local_commit::{CommitMetadata, MainCommit},
+    remote_command::RemoteGitCommand,
+};
 
 pub mod local_commit;
+pub mod remote_command;
+
+pub enum CommandOption {
+    Default,
+    Silent,
+    DryRun,
+}
 
 pub struct GitRepo {
     repo: git2::Repository,
     pub current_branch_name: String,
     path: PathBuf,
+    git_command_option: CommandOption,
 }
 
 impl GitRepo {
     pub fn open<P>(path: P) -> anyhow::Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        GitRepo::open_with_remote(path, CommandOption::Silent)
+    }
+
+    pub fn open_with_remote<P>(path: P, remote: CommandOption) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
     {
@@ -48,9 +66,17 @@ impl GitRepo {
             repo,
             path: path.as_ref().into(),
             current_branch_name,
+            git_command_option: remote,
         })
     }
 
+    pub fn remote(&self) -> RemoteGitCommand {
+        match self.git_command_option {
+            CommandOption::Default => RemoteGitCommand::Default(&self.path),
+            CommandOption::Silent => RemoteGitCommand::Silent(&self.path),
+            CommandOption::DryRun => RemoteGitCommand::DryRun(&self.path),
+        }
+    }
 
     pub fn base_commit(&self) -> anyhow::Result<Commit> {
         let remote_ref = format!("refs/remotes/origin/{}", self.current_branch_name);
@@ -132,6 +158,14 @@ impl GitRepo {
     }
 
     pub fn update_current_branch(&self, new_head: &Commit) -> anyhow::Result<()> {
+        if matches!(self.git_command_option, CommandOption::DryRun) {
+            println!(
+                "Setting {} to point to {}",
+                self.current_branch_name,
+                new_head.id()
+            );
+            return Ok(());
+        }
         self.repo
             .set_head_detached(new_head.id())
             .context("Detach HEAD before moving the main branch")?;
