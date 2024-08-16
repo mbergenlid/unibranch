@@ -1,10 +1,7 @@
 use git2::Oid;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use ubr::{
-    commands::{create, pull},
-    git::GitRepo,
-};
+use ubr::{commands::{create, sync}, git::GitRepo};
 
 use test_repo::{RemoteRepo, TestRepoWithRemote};
 
@@ -14,7 +11,6 @@ fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
 
 fn push_options(commit_ref: Option<Oid>) -> create::Options {
     create::Options {
-        dry_run: false,
         commit_ref: commit_ref.map(|id| format!("{}", id)),
     }
 }
@@ -32,6 +28,7 @@ fn test_update_a_diff() {
     let repo = repo
         .append_file("File1", "Another Hello, World!")
         .commit_all("commit2");
+
 
     let commit = repo.find_commit(0).id();
     create::execute(push_options(Some(commit)), git_repo(&repo)).unwrap();
@@ -56,7 +53,7 @@ fn test_update_a_diff() {
         .append_file("File1", "Some PR review fixes")
         .commit_all_amend();
 
-    pull::execute(pull::Options::default(), git_repo(&repo)).unwrap();
+    sync::execute(sync::Options::default(), git_repo(&repo)).unwrap();
 
     //Verify the diff now.
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
@@ -146,7 +143,7 @@ fn test_a_more_complex_update() {
         )
         .commit_all_fixup(unrelated_commit);
 
-    pull::execute(pull::Options::default(), git_repo(&repo)).unwrap();
+    sync::execute(sync::Options::default(), git_repo(&repo)).unwrap();
 
     //Verify the diff now.
     let actual_diff = String::from_utf8(repo.diff("origin/commit2", "origin/master").stdout)
@@ -221,7 +218,7 @@ fn test_update_a_commit_and_modify_the_commit_message() {
         .replace("{}", &repo.rev_parse("origin/commit2"))
     );
 
-    pull::execute(pull::Options::default(), git_repo(&repo)).unwrap();
+    sync::execute(sync::Options::default(), git_repo(&repo)).unwrap();
 
     //Note is still the same
     assert_eq!(

@@ -4,9 +4,6 @@ use crate::git::{local_commit::MainCommit, GitRepo};
 pub struct Options {
     #[arg(short, long)]
     cont: bool,
-
-    #[arg(short, long)]
-    dry_run: bool,
 }
 
 //TODO: Rename to 'update' or 'sync' or something
@@ -23,15 +20,7 @@ pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
                     .merge_remote_head(Some(&parent_commit))?
                     .sync_with_main()?;
 
-                if !options.dry_run {
-                    repo.remote().push(new_parent_1.meta_data())?;
-                } else {
-                    println!(
-                        "Dry-run: Push {} as new head of remote branch {}",
-                        new_parent_1.local_branch_head()?.id(),
-                        new_parent_1.meta_data().remote_branch_name
-                    );
-                }
+                repo.remote().push(new_parent_1.meta_data())?;
                 parent_commit = new_parent_1.commit();
             }
             MainCommit::UnTracked(local_commit) => {

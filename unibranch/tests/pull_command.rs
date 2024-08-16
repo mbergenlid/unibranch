@@ -1,7 +1,7 @@
 use test_repo::{RemoteRepo, TestRepoWithRemote};
 
 use ubr::{
-    commands::{create, pull},
+    commands::{create, sync},
     git::{local_commit::CommitMetadata, GitRepo},
 };
 
@@ -26,7 +26,6 @@ fn update_commit_from_remote() {
     //Create a PR from local repo
     create::execute(
         create::Options {
-            dry_run: false,
             commit_ref: Some("HEAD".to_string()),
         },
         git_repo(&local_repo),
@@ -41,7 +40,7 @@ fn update_commit_from_remote() {
         .commit_all("Fixup")
         .push();
 
-    pull::execute(pull::Options::default(), git_repo(&local_repo))
+    sync::execute(sync::Options::default(), git_repo(&local_repo))
         .expect("Error while running pull command");
 
     let local_commit_diff =
@@ -91,7 +90,6 @@ fn update_commit_from_remote_with_local_changes() {
     //Create a PR from local repo
     create::execute(
         create::Options {
-            dry_run: false,
             commit_ref: Some("HEAD".to_string()),
         },
         git_repo(&local_repo),
@@ -136,7 +134,7 @@ fn update_commit_from_remote_with_local_changes() {
     );
 
     //Perform the actual update
-    pull::execute(pull::Options::default(), git_repo(&local_repo))
+    sync::execute(sync::Options::default(), git_repo(&local_repo))
         .expect("Unable to perform pull command");
 
     let local_commit_diff =
@@ -195,7 +193,6 @@ fn sync_multiple_commits() {
     //second pr
     create::execute(
         create::Options {
-            dry_run: false,
             commit_ref: Some("HEAD".to_string()),
         },
         git_repo(&local_repo),
@@ -205,7 +202,6 @@ fn sync_multiple_commits() {
     //first pr
     create::execute(
         create::Options {
-            dry_run: false,
             commit_ref: Some("HEAD^".to_string()),
         },
         git_repo(&local_repo),
@@ -226,7 +222,7 @@ fn sync_multiple_commits() {
         .push()
         .show("HEAD^");
 
-    pull::execute(pull::Options::default(), git_repo(&local_repo)).unwrap();
+    sync::execute(sync::Options::default(), git_repo(&local_repo)).unwrap();
 
     let second_pr_diff =
         String::from_utf8(local_repo.diff("master^", "master").stdout).expect("Getting diff");

@@ -7,7 +7,6 @@ use pretty_assertions::assert_eq;
 
 fn create_options(commit_ref: Option<Oid>) -> create::Options {
     create::Options {
-        dry_run: false,
         commit_ref: commit_ref.map(|id| format!("{}", id)),
     }
 }
