@@ -237,4 +237,11 @@ impl<'repo> TrackedCommit<'repo> {
             meta_data: self.meta_data.update_commit(new_remote_head),
         }
     }
+
+    pub(crate) fn untrack(self) -> anyhow::Result<UnTrackedCommit<'repo>> {
+        self.git_repo.remove_meta_data(&self.commit)?;
+        //self.git_repo.remove_remote_branch(&self.meta_data.remote_branch_name)?;
+
+        Ok(UnTrackedCommit::new(self.repo, self.git_repo, self.commit))
+    }
 }

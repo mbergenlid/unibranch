@@ -15,6 +15,7 @@ fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
 fn push_options(commit_ref: Option<Oid>) -> create::Options {
     create::Options {
         commit_ref: commit_ref.map(|id| format!("{}", id)),
+        force: false,
     }
 }
 

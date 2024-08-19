@@ -111,10 +111,6 @@ impl<'repo> UnTrackedCommit<'repo> {
                 )
                 .to_ascii_lowercase()
         };
-        let pr_commit = self.git_repo.find_head_of_remote_branch(&branch_name);
-        if pr_commit.is_some() {
-            anyhow::bail!(format!("Remote branch '{}' already exist", branch_name));
-        }
         Ok(branch_name)
     }
 }

@@ -12,9 +12,9 @@ git2 = "0.18.3"
 itertools = "0.13.0"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+indoc = "2.0.5"
 
 [dev-dependencies]
 test_repo = { path = "../test_repo" }
 tempfile = "3.10.1"
-indoc = "2.0.5"
 pretty_assertions = "1.4.0"

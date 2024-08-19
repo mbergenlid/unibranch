@@ -3,14 +3,15 @@ use crate::git::{local_commit::MainCommit, GitRepo};
 #[derive(clap::Parser, Default)]
 pub struct Options {
     #[arg(short, long)]
-    cont: bool,
+    pub cont: bool,
 }
-
-//TODO: Rename to 'update' or 'sync' or something
 
 pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
     repo.remote().fetch()?;
 
+    if options.cont {
+        //Read the current state
+    }
     let mut parent_commit = repo.base_commit()?;
     for original_commit in repo.unpushed_commits().unwrap() {
         match original_commit {

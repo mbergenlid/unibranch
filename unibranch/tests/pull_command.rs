@@ -27,6 +27,7 @@ fn update_commit_from_remote() {
     create::execute(
         create::Options {
             commit_ref: Some("HEAD".to_string()),
+            force: false,
         },
         git_repo(&local_repo),
     )
@@ -89,6 +90,7 @@ fn update_commit_from_remote_with_local_changes() {
     create::execute(
         create::Options {
             commit_ref: Some("HEAD".to_string()),
+            force: false,
         },
         git_repo(&local_repo),
     )
@@ -190,6 +192,7 @@ fn sync_multiple_commits() {
     create::execute(
         create::Options {
             commit_ref: Some("HEAD".to_string()),
+            force: false,
         },
         git_repo(&local_repo),
     )
@@ -199,6 +202,7 @@ fn sync_multiple_commits() {
     create::execute(
         create::Options {
             commit_ref: Some("HEAD^".to_string()),
+            force: false,
         },
         git_repo(&local_repo),
     )

@@ -129,6 +129,20 @@ impl<'a> TestRepoWithRemote<'a> {
         self
     }
 
+    pub fn add_all(self) -> Self {
+        let current_dir = self.local_repo_dir.path();
+        assert!(Command::new("git")
+            .current_dir(current_dir)
+            .arg("add")
+            .arg(".")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
+        self
+    }
+
     pub fn commit_all(self, msg: &str) -> Self {
         let current_dir = self.local_repo_dir.path();
         assert!(Command::new("git")

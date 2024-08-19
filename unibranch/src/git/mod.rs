@@ -7,6 +7,7 @@ use std::{
 use anyhow::{Context, Ok};
 use clap::builder::OsStr;
 use git2::{Commit, Oid, Repository, RepositoryOpenFlags};
+use indoc::formatdoc;
 
 use self::{
     local_commit::{CommitMetadata, MainCommit},
@@ -47,6 +48,7 @@ impl GitRepo {
             &[] as &[&OsStr],
         )
         .context("Opening git repository")?;
+        //TODO: Check if we have an ongoing SYNC...
         let head = repo.head().context("No head")?;
         if !head.is_branch() {
             anyhow::bail!("Detached HEAD");
@@ -187,15 +189,21 @@ impl GitRepo {
                 let c = c?;
                 println!("Conclict {:?}", CString::new(c.our.unwrap().path).unwrap())
             }
-            //self.repo.set_head_detached(base_commit.id())?;
-            //self.repo.merge(
-            //    &[&self.repo.find_annotated_commit(remote_commit.id())?],
-            //    None,
-            //    None,
-            //)?;
-            //self.git_repo
-            //    .save_merge_state(&base_commit, &remote_commit)?;
-            anyhow::bail!("Unable to merge {} and {}", commit1.id(), commit2.id());
+            self.repo.set_head_detached(commit1.id())?;
+            self.repo.merge(
+                &[&self.repo.find_annotated_commit(commit2.id())?],
+                None,
+                None,
+            )?;
+            self.save_merge_state(&commit1, &commit2)?;
+            let message = formatdoc! {"
+                    Unable to merge local commit ({local}) with commit from remote ({remote})
+                    Once all the conflicts has been resolved, run 'ubr sync --continue'
+                    ",
+                local = commit1.id(),
+                remote = commit2.id(),
+            };
+            anyhow::bail!(message);
         }
         if merge_index.is_empty() {
             anyhow::bail!("Index is empty");

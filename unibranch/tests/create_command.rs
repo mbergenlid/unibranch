@@ -8,6 +8,7 @@ use pretty_assertions::assert_eq;
 fn create_options(commit_ref: Option<Oid>) -> create::Options {
     create::Options {
         commit_ref: commit_ref.map(|id| format!("{}", id)),
+        force: false,
     }
 }
 
@@ -142,8 +143,9 @@ fn should_not_be_able_to_call_create_for_same_commit_twice() {
     assert!(result.is_err());
 }
 
+
 #[test]
-fn should_fail_if_remote_branch_already_exists() {
+fn force_if_already_tracked() {
     let remote = RemoteRepo::new();
     let repo = remote.clone_repo();
 
@@ -158,14 +160,7 @@ fn should_fail_if_remote_branch_already_exists() {
 
     create::execute(create_options(None), git_repo(&repo)).unwrap();
 
-    let repo = repo
-        .create_file("File2", "Another Hello, World!")
-        .commit_all("commit2");
+    let repo = repo.append_file("File1", "More lines").commit_all_amend();
 
-    let result = create::execute(create_options(None), git_repo(&repo));
-    assert!(result.is_err());
-    assert_eq!(
-        format!("{}", result.unwrap_err()),
-        "Remote branch 'commit2' already exist"
-    );
+    create::execute(create::Options { force: true, commit_ref: None }, git_repo(&repo)).unwrap();
 }
