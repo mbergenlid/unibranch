@@ -1,10 +1,10 @@
 use git2::Oid;
-use indoc::formatdoc;
+use indoc::{formatdoc, indoc};
 use pretty_assertions::assert_eq;
 use test_repo::{RemoteRepo, TestRepoWithRemote};
 use ubr::{
     commands::{create, sync},
-    git::GitRepo,
+    git::{GitRepo, SyncState},
 };
 
 fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
@@ -54,6 +54,9 @@ fn test_merge_conflict_from_remote() {
         .append_file("File1", "Some local fixes")
         .commit_all_amend();
 
+    let expected_main_commit_id = local_repo.head();
+    let expected_main_parent_id = local_repo.find_commit(1).id();
+
     let result = sync::execute(sync::Options::default(), git_repo(&local_repo));
     assert!(result.is_err());
     let expected_error_message = formatdoc! {"
@@ -65,8 +68,8 @@ fn test_merge_conflict_from_remote() {
     };
     assert_eq!(format!("{}", result.unwrap_err()), expected_error_message);
 
-    let merge_head = String::from_utf8(
-        std::fs::read(
+    let sync_state = serde_json::from_reader::<_, SyncState>(
+        std::fs::File::open(
             local_repo
                 .local_repo_dir
                 .path()
@@ -76,12 +79,20 @@ fn test_merge_conflict_from_remote() {
     )
     .unwrap();
 
-    assert_eq!(merge_head, format!("{}\n", remote_head));
+    assert_eq!(
+        sync_state,
+        SyncState {
+            remote_commit_id: remote_head.into(),
+            main_commit_id: expected_main_commit_id.into(),
+            main_commit_parent_id: expected_main_parent_id.into(),
+            main_branch_name: "master".to_string()
+        }
+    );
 
     let local_repo = local_repo
         .create_file(
             "File1",
-            "Starting on a new feature\nSome local/remote fixes",
+            "Hello, World!\nStarting on a new feature\nSome local/remote fixes",
         )
         .add_all();
 
@@ -93,9 +104,33 @@ fn test_merge_conflict_from_remote() {
 
         assert_eq!(
             resolved_file,
-            "Starting on a new feature\nSome local/remote fixes\n"
+            "Hello, World!\nStarting on a new feature\nSome local/remote fixes\n"
         );
     }
 
     sync::execute(sync::Options { cont: true }, git_repo(&local_repo)).expect("Should succeed");
+
+    local_repo.assert_diff(
+        "master^",
+        "master",
+        indoc! {"
+        diff --git a/File1 b/File1
+        index 8ab686e..7eb283b 100644
+        --- a/File1
+        +++ b/File1
+        @@ -1 +1,3 @@
+         Hello, World!
+        +Starting on a new feature
+        +Some local/remote fixes
+        "}
+    );
 }
+
+//#[test]
+//fn test_merge_conflict_with_main() {
+//    todo!()
+//}
+//
+//#[test]
+//fn test_merge_conflict_in_the_middle_of_sync() {
+//}

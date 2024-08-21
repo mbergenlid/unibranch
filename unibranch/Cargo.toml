@@ -13,6 +13,8 @@ itertools = "0.13.0"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 indoc = "2.0.5"
+serde = { version = "1.0.208", features = ["serde_derive"] }
+serde_json = "1.0.125"
 
 [dev-dependencies]
 test_repo = { path = "../test_repo" }

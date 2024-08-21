@@ -1,21 +1,19 @@
-use std::{
-    ffi::CString,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Ok};
 use clap::builder::OsStr;
-use git2::{Commit, Oid, Repository, RepositoryOpenFlags};
-use indoc::formatdoc;
+use git2::{Commit, Repository, RepositoryOpenFlags};
+use serde::{Deserialize, Serialize};
 
 use self::{
-    local_commit::{CommitMetadata, MainCommit},
+    local_commit::{CommitMetadata, MainCommit, TrackedCommit},
     remote_command::RemoteGitCommand,
 };
 
 pub mod local_commit;
+mod oid;
 pub mod remote_command;
+pub use oid::Oid;
 
 pub enum CommandOption {
     Default,
@@ -23,11 +21,20 @@ pub enum CommandOption {
     DryRun,
 }
 
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+pub struct SyncState {
+    pub main_commit_id: Oid,
+    pub remote_commit_id: Oid,
+    pub main_commit_parent_id: Oid,
+    pub main_branch_name: String,
+}
+
 pub struct GitRepo {
     repo: git2::Repository,
     pub current_branch_name: String,
     path: PathBuf,
     git_command_option: CommandOption,
+    sync_state: Option<SyncState>,
 }
 
 impl GitRepo {
@@ -49,6 +56,16 @@ impl GitRepo {
         )
         .context("Opening git repository")?;
         //TODO: Check if we have an ongoing SYNC...
+        if let Some(state) = GitRepo::try_load_sync_state(path.as_ref()) {
+            return Ok(GitRepo {
+                repo,
+                current_branch_name: state.main_branch_name.clone(),
+                path: path.as_ref().into(),
+                git_command_option: remote,
+                sync_state: Some(state),
+            });
+            //anyhow::bail!("{:?}", state);
+        }
         let head = repo.head().context("No head")?;
         if !head.is_branch() {
             anyhow::bail!("Detached HEAD");
@@ -64,11 +81,16 @@ impl GitRepo {
 
         let mut config = repo.config()?;
         config.set_str("notes.rewriteRef", "refs/notes/*")?;
+
+        {
+            std::fs::write(repo.path().join("info/exclude"), ".ubr")?;
+        }
         Ok(GitRepo {
             repo,
             path: path.as_ref().into(),
             current_branch_name,
             git_command_option: remote,
+            sync_state: None,
         })
     }
 
@@ -138,11 +160,37 @@ impl GitRepo {
         std::result::Result::Ok(())
     }
 
-    pub fn save_merge_state(&self, _commit1: &Commit, commit2: &Commit) -> anyhow::Result<()> {
+    pub fn remove_meta_data(&self, commit: &Commit) -> Result<(), git2::Error> {
+        let committer = self.repo.signature().or_else(|_| {
+            git2::Signature::now(
+                String::from_utf8_lossy(commit.committer().name_bytes()).as_ref(),
+                String::from_utf8_lossy(commit.committer().email_bytes()).as_ref(),
+            )
+        })?;
+        self.repo
+            .note_delete(commit.id(), None, &committer, &committer)?;
+        std::result::Result::Ok(())
+    }
+
+    fn try_load_sync_state<P>(path: P) -> Option<SyncState>
+    where
+        P: AsRef<Path>,
+    {
+        if let Some(file) = std::fs::File::open(path.as_ref().join(".ubr/SYNC_MERGE_HEAD")).ok() {
+            return serde_json::from_reader(file).ok();
+        }
+        None
+    }
+
+    fn cleanup_state(&self) -> anyhow::Result<()> {
+        std::fs::remove_file(self.path.join(".ubr/SYNC_MERGE_HEAD")).context("Cleanup sync state")
+    }
+
+    pub fn save_sync_state(&self, state: &SyncState) -> anyhow::Result<()> {
         std::fs::create_dir_all(format!("{}/.ubr", self.path.display()))?;
-        let mut file =
+        let file =
             std::fs::File::create_new(format!("{}/.ubr/SYNC_MERGE_HEAD", self.path.display()))?;
-        file.write_all(format!("{}\n", commit2.id()).as_bytes())?;
+        serde_json::to_writer(file, state)?;
         Ok(())
     }
 
@@ -180,47 +228,35 @@ impl GitRepo {
         Ok(())
     }
 
-    pub fn merge(&self, commit1: &Commit, commit2: &Commit) -> anyhow::Result<Oid> {
-        let mut merge_index = self.repo.merge_commits(commit1, commit2, None)?;
+    pub(crate) fn finish_merge(&self) -> anyhow::Result<TrackedCommit> {
+        let state = self.sync_state.as_ref().expect("Must have a sync state");
+        let tree = self.repo.index()?.write_tree()?;
+        let tree = self.repo.find_tree(tree)?;
+        let author = self.repo.signature()?;
 
-        //self.repo.merge_analysis_for_ref
-        if merge_index.has_conflicts() {
-            for c in merge_index.conflicts()? {
-                let c = c?;
-                println!("Conclict {:?}", CString::new(c.our.unwrap().path).unwrap())
-            }
-            self.repo.set_head_detached(commit1.id())?;
-            self.repo.merge(
-                &[&self.repo.find_annotated_commit(commit2.id())?],
-                None,
-                None,
-            )?;
-            self.save_merge_state(&commit1, &commit2)?;
-            let message = formatdoc! {"
-                    Unable to merge local commit ({local}) with commit from remote ({remote})
-                    Once all the conflicts has been resolved, run 'ubr sync --continue'
-                    ",
-                local = commit1.id(),
-                remote = commit2.id(),
-            };
-            anyhow::bail!(message);
-        }
-        if merge_index.is_empty() {
-            anyhow::bail!("Index is empty");
-        }
-        let tree = merge_index
-            .write_tree_to(&self.repo)
-            .context("write index to tree")?;
-        let oid = self.repo.commit(
+        let merge_commit_id = self.repo.commit(
             None,
-            &self.repo.signature().context("No signature")?,
-            &self.repo.signature()?,
+            &author,
+            &author,
             "Merge",
-            &self.repo.find_tree(tree)?,
-            &[commit1, commit2],
+            &tree,
+            &[
+                &self.repo.head()?.peel_to_commit()?,
+                &self.repo.find_commit(state.remote_commit_id.into())?,
+            ],
         )?;
+        self.repo.cleanup_state()?;
+        self.cleanup_state()?;
+        let tracked_commit =
+            match self.find_unpushed_commit(&format!("{}", state.main_commit_id))? {
+                MainCommit::UnTracked(_) => todo!(),
+                MainCommit::Tracked(commit) => commit,
+            };
 
-        Ok(oid)
+        tracked_commit.cont(
+            &self.repo.find_commit(merge_commit_id)?,
+            Some(&self.repo.find_commit(state.main_commit_parent_id.into())?),
+        )
     }
 }
 

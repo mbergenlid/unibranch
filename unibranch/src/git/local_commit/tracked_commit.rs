@@ -1,9 +1,15 @@
+use std::ffi::CString;
+
 use anyhow::Context;
 use anyhow::Ok;
 use git2::{Branch, Commit, FileFavor, MergeOptions, Oid, Repository};
+use indoc::formatdoc;
+
+use crate::git::SyncState;
 
 use super::CommitMetadata;
 use super::GitRepo;
+use super::UnTrackedCommit;
 
 #[derive(Clone)]
 pub struct TrackedCommit<'repo> {
@@ -144,9 +150,7 @@ impl<'repo> TrackedCommit<'repo> {
             return Ok(self);
         } else {
             let local_branch_commit = self.repo.find_commit(local_branch_head)?;
-            let oid = self
-                .git_repo
-                .merge(&local_branch_commit, &remote_branch_commit)?;
+            let oid = self.merge(&local_branch_commit, &remote_branch_commit)?;
             self.repo.find_commit(oid)?
         };
 
@@ -218,15 +222,60 @@ impl<'repo> TrackedCommit<'repo> {
             Ok(self)
         } else {
             let local_branch_commit = self.repo.find_commit(local_branch_head)?;
-            let merge_oid = self
-                .git_repo
-                .merge(&self.git_repo.base_commit()?, &local_branch_commit)?;
+            let merge_oid = self.merge(&self.git_repo.base_commit()?, &local_branch_commit)?;
 
             let _ = std::mem::replace(&mut self.meta_data.remote_commit, merge_oid);
             self.git_repo
                 .save_meta_data(self.as_commit(), &self.meta_data)?;
             Ok(self)
         }
+    }
+
+    pub fn cont(
+        self,
+        new_remote_commit: &Commit<'repo>,
+        new_parent: Option<&Commit<'repo>>,
+    ) -> anyhow::Result<Self> {
+        let new_remote_tree = new_remote_commit.tree()?;
+        let diff = self.repo.diff_tree_to_tree(
+            Some(&self.git_repo.base_commit()?.tree()?),
+            Some(&new_remote_tree),
+            None,
+        )?;
+
+        let parent_commit = if let Some(parent) = new_parent {
+            parent.clone()
+        } else {
+            self.commit.parent(0)?
+        };
+        let mut index = self
+            .repo
+            .apply_to_tree(&parent_commit.tree()?, &diff, None)?;
+        let tree_id = index.write_tree_to(self.repo)?;
+        let tree = self.repo.find_tree(tree_id)?;
+
+        let new_commit = {
+            let signature = self.as_commit().author();
+            self.repo.commit(
+                None,
+                &signature,
+                &signature,
+                self.commit.message().expect("Not valid UTF-8"),
+                &tree,
+                &[&parent_commit],
+            )?
+        };
+
+        let new_commit = self.repo.find_commit(new_commit)?;
+        let new_meta_data = self.meta_data.update_commit(new_remote_commit.id());
+        self.git_repo.save_meta_data(&new_commit, &new_meta_data)?;
+
+        Ok(TrackedCommit::new(
+            self.repo,
+            self.git_repo,
+            new_commit,
+            new_meta_data,
+        ))
     }
 
     pub fn update_remote(self, new_remote_head: Oid) -> Self {
@@ -236,6 +285,54 @@ impl<'repo> TrackedCommit<'repo> {
             commit: self.commit,
             meta_data: self.meta_data.update_commit(new_remote_head),
         }
+    }
+
+    fn merge(&self, commit1: &Commit, commit2: &Commit) -> anyhow::Result<Oid> {
+        let mut merge_index = self.repo.merge_commits(commit1, commit2, None)?;
+
+        //self.repo.merge_analysis_for_ref
+        if merge_index.has_conflicts() {
+            for c in merge_index.conflicts()? {
+                let c = c?;
+                println!("Conclict {:?}", CString::new(c.our.unwrap().path).unwrap())
+            }
+            self.repo.set_head_detached(commit1.id())?;
+            self.repo.merge(
+                &[&self.repo.find_annotated_commit(commit2.id())?],
+                None,
+                None,
+            )?;
+            self.git_repo.save_sync_state(&SyncState {
+                main_commit_id: self.commit.id().into(),
+                remote_commit_id: commit2.id().into(),
+                main_commit_parent_id: self.commit.parent(0)?.id().into(),
+                main_branch_name: self.git_repo.current_branch_name.clone(),
+            })?;
+            let message = formatdoc! {"
+                    Unable to merge local commit ({local}) with commit from remote ({remote})
+                    Once all the conflicts has been resolved, run 'ubr sync --continue'
+                    ",
+                local = commit1.id(),
+                remote = commit2.id(),
+            };
+            anyhow::bail!(message);
+        }
+        if merge_index.is_empty() {
+            anyhow::bail!("Index is empty");
+        }
+        let tree = merge_index
+            .write_tree_to(&self.repo)
+            .context("write index to tree")?;
+        let oid = self.repo.commit(
+            None,
+            &self.repo.signature().context("No signature")?,
+            &self.repo.signature()?,
+            "Merge",
+            &self.repo.find_tree(tree)?,
+            &[commit1, commit2],
+        )?;
+
+        Ok(oid)
     }
 
     pub(crate) fn untrack(self) -> anyhow::Result<UnTrackedCommit<'repo>> {

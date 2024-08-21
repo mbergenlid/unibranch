@@ -11,6 +11,10 @@ pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
 
     if options.cont {
         //Read the current state
+        //First finish the ongoing merge
+        let tracked_commit = repo.finish_merge()?;
+        repo.update_current_branch(tracked_commit.as_commit())?;
+        return Ok(());
     }
     let mut parent_commit = repo.base_commit()?;
     for original_commit in repo.unpushed_commits().unwrap() {

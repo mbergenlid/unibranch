@@ -39,10 +39,7 @@ fn should_not_merge_if_remote_commit_is_descendant_of_local() {
     //When
     let tracked_commit = tracked_commit.merge_remote_head(None).unwrap();
     let rev_str = format!("{}", tracked_commit.as_commit().id());
-    assert_eq!(
-        tracked_commit.meta_data().remote_commit,
-        remote_branch_head
-    );
+    assert_eq!(tracked_commit.meta_data().remote_commit, remote_branch_head);
 
     local.assert_note(&rev_str, tracked_commit.meta_data());
 

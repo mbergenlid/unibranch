@@ -134,7 +134,9 @@ impl<'a> TryFrom<&'a str> for CommitMetadata<'a> {
                 }
             }
         }
-        if let (Some(remote_branch_name), Some(remote_commit)) = (remote_branch_name, remote_commit_id) {
+        if let (Some(remote_branch_name), Some(remote_commit)) =
+            (remote_branch_name, remote_commit_id)
+        {
             Ok(CommitMetadata {
                 remote_branch_name: Cow::Owned(remote_branch_name.to_string()),
                 remote_commit,
@@ -160,9 +162,7 @@ mod test {
         "};
 
         let meta_data = TryInto::<CommitMetadata>::try_into(commit_msg);
-        assert!(
-            meta_data.is_err(),
-        )
+        assert!(meta_data.is_err(),)
     }
 
     #[test]

@@ -143,7 +143,6 @@ fn should_not_be_able_to_call_create_for_same_commit_twice() {
     assert!(result.is_err());
 }
 
-
 #[test]
 fn force_if_already_tracked() {
     let remote = RemoteRepo::new();
@@ -162,5 +161,12 @@ fn force_if_already_tracked() {
 
     let repo = repo.append_file("File1", "More lines").commit_all_amend();
 
-    create::execute(create::Options { force: true, commit_ref: None }, git_repo(&repo)).unwrap();
+    create::execute(
+        create::Options {
+            force: true,
+            commit_ref: None,
+        },
+        git_repo(&repo),
+    )
+    .unwrap();
 }
