@@ -1,3 +1,5 @@
+use std::process::Stdio;
+
 use test_repo::{RemoteRepo, TestRepoWithRemote};
 
 use ubr::{
@@ -43,6 +45,14 @@ fn update_commit_from_remote() {
 
     sync::execute(sync::Options::default(), git_repo(&local_repo))
         .expect("Error while running pull command");
+    local_repo
+        .run_command()
+        .stdout(Stdio::inherit())
+        .arg("diff")
+        .arg("--cached")
+        .status()
+        .unwrap();
+    local_repo.assert_workdir_is_clean();
 
     let local_commit_diff =
         String::from_utf8(local_repo.diff("master", "master^").stdout).expect("Getting diff");

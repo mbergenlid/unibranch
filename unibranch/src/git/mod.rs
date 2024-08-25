@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Ok};
+use anyhow::Context;
 use clap::builder::OsStr;
 use git2::{Commit, Repository, RepositoryOpenFlags};
 use serde::{Deserialize, Serialize};
@@ -176,7 +176,7 @@ impl GitRepo {
     where
         P: AsRef<Path>,
     {
-        if let Some(file) = std::fs::File::open(path.as_ref().join(".ubr/SYNC_MERGE_HEAD")).ok() {
+        if let Ok(file) = std::fs::File::open(path.as_ref().join(".ubr/SYNC_MERGE_HEAD")) {
             return serde_json::from_reader(file).ok();
         }
         None
@@ -217,8 +217,11 @@ impl GitRepo {
             return Ok(());
         }
         self.repo
+            .checkout_tree(new_head.tree()?.as_object(), None)?;
+        self.repo
             .set_head_detached(new_head.id())
             .context("Detach HEAD before moving the main branch")?;
+
         self.repo
             .branch(&self.current_branch_name, new_head, true)
             .context("Moving the main branch pointer")?;

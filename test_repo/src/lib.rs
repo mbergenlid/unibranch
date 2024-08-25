@@ -459,4 +459,17 @@ impl<'a> TestRepoWithRemote<'a> {
 
         self.assert_diff("origin/master", &format!("{}", remote_head), &main_diff);
     }
+
+    pub fn assert_workdir_is_clean(&self) {
+        assert!(
+            self.local_repo.statuses(None).unwrap().is_empty(),
+            "Expecting work dir to be clean but wasn't\n{:?}",
+            self.local_repo
+                .statuses(None)
+                .unwrap()
+                .into_iter()
+                .map(|s| s.path().expect("Expecting path to be UTF-8").to_string())
+                .collect::<Vec<_>>()
+        );
+    }
 }

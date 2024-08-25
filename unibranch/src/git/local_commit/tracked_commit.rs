@@ -4,6 +4,7 @@ use anyhow::Context;
 use anyhow::Ok;
 use git2::{Branch, Commit, FileFavor, MergeOptions, Oid, Repository};
 use indoc::formatdoc;
+use tracing::info;
 
 use crate::git::SyncState;
 
@@ -108,6 +109,8 @@ impl<'repo> TrackedCommit<'repo> {
             )?
         };
 
+        info!("Sync main commit {} as {}", self.commit.id(), new_commit);
+
         let new_meta = self.meta_data.update_commit(new_commit);
         self.git_repo.save_meta_data(&self.commit, &new_meta)?;
         std::result::Result::Ok(TrackedCommit {
@@ -150,7 +153,8 @@ impl<'repo> TrackedCommit<'repo> {
             return Ok(self);
         } else {
             let local_branch_commit = self.repo.find_commit(local_branch_head)?;
-            let oid = self.merge(&local_branch_commit, &remote_branch_commit)?;
+            let oid = self
+                .merge(&local_branch_commit, &remote_branch_commit)?;
             self.repo.find_commit(oid)?
         };
 
@@ -215,14 +219,15 @@ impl<'repo> TrackedCommit<'repo> {
         let local_branch_head = self.meta_data().remote_commit;
         let merge_base = self
             .repo
-            .merge_base(local_branch_head, self.as_commit().id())?;
-        if dbg!(merge_base) == dbg!(self.git_repo.base_commit()?.id())
-            || merge_base == self.commit.id()
-        {
+            .merge_base(local_branch_head, self.as_commit().id())
+            .context("Find merge base of remote and main")?;
+        if merge_base == self.git_repo.base_commit()?.id() || merge_base == self.commit.id() {
             Ok(self)
         } else {
             let local_branch_commit = self.repo.find_commit(local_branch_head)?;
-            let merge_oid = self.merge(&self.git_repo.base_commit()?, &local_branch_commit)?;
+            let merge_oid = self
+                .merge(&self.git_repo.base_commit()?, &local_branch_commit)
+                .context("Merge origin/main with local_branch_head")?;
 
             let _ = std::mem::replace(&mut self.meta_data.remote_commit, merge_oid);
             self.git_repo
@@ -296,7 +301,10 @@ impl<'repo> TrackedCommit<'repo> {
                 let c = c?;
                 println!("Conclict {:?}", CString::new(c.our.unwrap().path).unwrap())
             }
-            self.repo.set_head_detached(commit1.id())?;
+
+            self.repo
+                .checkout_tree(commit1.tree()?.as_object(), None)?;
+            self.repo.set_head_detached(commit1.id()).context("Detach HEAD")?;
             self.repo.merge(
                 &[&self.repo.find_annotated_commit(commit2.id())?],
                 None,
@@ -321,7 +329,7 @@ impl<'repo> TrackedCommit<'repo> {
             anyhow::bail!("Index is empty");
         }
         let tree = merge_index
-            .write_tree_to(&self.repo)
+            .write_tree_to(self.repo)
             .context("write index to tree")?;
         let oid = self.repo.commit(
             None,

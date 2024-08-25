@@ -1,4 +1,3 @@
-use std::time::{Duration, UNIX_EPOCH};
 
 use anyhow::Context;
 use git2::{Commit, Repository};

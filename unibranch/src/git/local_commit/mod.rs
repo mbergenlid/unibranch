@@ -105,15 +105,13 @@ impl FromStr for CommitMetadata<'static> {
                 }
             }
         }
-        if remote_branch_name.is_none() {
-            Err(MetaDataError)
-        } else if remote_commit_id.is_none() {
-            Err(MetaDataError)
-        } else {
+        if let (Some(branch), Some(commit)) = (remote_branch_name, remote_commit_id) {
             Ok(CommitMetadata {
-                remote_branch_name: Cow::Owned(remote_branch_name.unwrap().to_string()),
-                remote_commit: remote_commit_id.unwrap(),
+                remote_branch_name: Cow::Owned(branch.to_string()),
+                remote_commit: commit,
             })
+        } else {
+            Err(MetaDataError)
         }
     }
 }
