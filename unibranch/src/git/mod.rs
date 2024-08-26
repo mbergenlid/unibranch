@@ -55,7 +55,6 @@ impl GitRepo {
             &[] as &[&OsStr],
         )
         .context("Opening git repository")?;
-        //TODO: Check if we have an ongoing SYNC...
         if let Some(state) = GitRepo::try_load_sync_state(path.as_ref()) {
             return Ok(GitRepo {
                 repo,
@@ -197,8 +196,17 @@ impl GitRepo {
     pub fn unpushed_commits(&self) -> anyhow::Result<Vec<MainCommit>> {
         let mut walk = self.repo.revwalk()?;
         walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
-        walk.push_head()?;
-        walk.hide(self.base_commit()?.id())?;
+
+        let head = self.repo.find_branch(&self.current_branch_name, git2::BranchType::Local)?.into_reference().peel_to_commit()?;
+        walk.push(head.id())?;
+
+        let base_commit_id = if let Some(sync_state) = &self.sync_state {
+            sync_state.main_commit_id.into()
+        } else {
+            self.base_commit()?.id()
+        };
+
+        walk.hide(base_commit_id)?;
 
         let result: Result<Vec<_>, _> = walk
             .map(|r| self.repo.find_commit(r.expect("whhat")).unwrap())

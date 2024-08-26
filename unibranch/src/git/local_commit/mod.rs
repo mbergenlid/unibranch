@@ -13,6 +13,7 @@ pub use tracked_commit::TrackedCommit;
 mod untracked_commit;
 pub use untracked_commit::UnTrackedCommit;
 
+#[derive(Debug)]
 pub enum MainCommit<'repo> {
     UnTracked(UnTrackedCommit<'repo>),
     Tracked(TrackedCommit<'repo>),

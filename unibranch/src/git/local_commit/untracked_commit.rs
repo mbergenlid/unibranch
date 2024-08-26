@@ -1,4 +1,6 @@
 
+use std::fmt::Debug;
+
 use anyhow::Context;
 use git2::{Commit, Repository};
 
@@ -113,5 +115,12 @@ impl<'repo> UnTrackedCommit<'repo> {
                 .to_ascii_lowercase()
         };
         Ok(branch_name)
+    }
+}
+
+impl Debug for UnTrackedCommit<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let commit = &self.commit;
+        write!(f, "Untracked Commit: {:?} {:?}", commit.id(), commit.message())
     }
 }

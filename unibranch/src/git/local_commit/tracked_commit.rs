@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::fmt::Debug;
 
 use anyhow::Context;
 use anyhow::Ok;
@@ -348,5 +349,12 @@ impl<'repo> TrackedCommit<'repo> {
         //self.git_repo.remove_remote_branch(&self.meta_data.remote_branch_name)?;
 
         Ok(UnTrackedCommit::new(self.repo, self.git_repo, self.commit))
+    }
+}
+
+impl Debug for TrackedCommit<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let commit = &self.commit;
+        write!(f, "Tracked Commit: {:?} {:?}", commit.id(), commit.message())
     }
 }

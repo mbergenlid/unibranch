@@ -9,15 +9,18 @@ pub struct Options {
 pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
     repo.remote().fetch()?;
 
-    if options.cont {
+    let unpushed_commits = repo.unpushed_commits()?;
+    let mut parent_commit = if options.cont {
         //Read the current state
         //First finish the ongoing merge
         let tracked_commit = repo.finish_merge()?;
-        repo.update_current_branch(tracked_commit.as_commit())?;
-        return Ok(());
-    }
-    let mut parent_commit = repo.base_commit()?;
-    for original_commit in repo.unpushed_commits().unwrap() {
+
+        //
+        tracked_commit.commit()
+    } else {
+        repo.base_commit()?
+    };
+    for original_commit in unpushed_commits {
         match original_commit {
             MainCommit::Tracked(tracked_commit) => {
                 let new_parent_1 = tracked_commit

@@ -543,6 +543,7 @@ dependencies = [
  "indoc",
  "pretty_assertions",
  "tempfile",
+ "ubr",
 ]
 
 [[package]]
