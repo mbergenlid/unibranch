@@ -1,4 +1,3 @@
-
 use indoc::indoc;
 use test_repo::RemoteRepo;
 
@@ -173,4 +172,3 @@ fn test_merge() {
         tracked_commit.meta_data().remote_commit,
     );
 }
-

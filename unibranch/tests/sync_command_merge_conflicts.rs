@@ -1,4 +1,3 @@
-
 use indoc::{formatdoc, indoc};
 use pretty_assertions::assert_eq;
 use test_repo::{RemoteRepo, TestRepoWithRemote};
@@ -165,7 +164,6 @@ fn test_merge_conflict_in_the_middle_of_sync() {
     let expected_main_commit_id = local_repo.head();
     let expected_main_parent_id = local_repo.find_commit(1).id();
 
-
     let result = sync::execute(sync::Options::default(), git_repo(&local_repo));
     assert!(result.is_err());
 
@@ -283,7 +281,6 @@ fn test_merge_conflict_in_the_middle_of_sync_2() {
         .create_file("File3", "Another unrelated feature")
         .commit_all("unrelated commit 2");
 
-
     let result = sync::execute(sync::Options::default(), git_repo(&local_repo));
     assert!(result.is_err());
 
@@ -368,5 +365,4 @@ fn test_merge_conflict_in_the_middle_of_sync_2() {
         +Another unrelated feature
         "},
     );
-
 }

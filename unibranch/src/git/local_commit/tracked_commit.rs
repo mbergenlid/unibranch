@@ -82,13 +82,25 @@ impl<'repo> TrackedCommit<'repo> {
     pub fn update_local_branch_head(self) -> Result<Self, git2::Error> {
         let remote_commit = self.repo.find_commit(self.meta_data().remote_commit)?;
 
-        let mut index = self.repo.cherrypick_commit(
-            self.as_commit(),
-            &remote_commit,
-            0,
-            Some(MergeOptions::default().file_favor(FileFavor::Theirs)),
-        )?;
-        assert!(!index.has_conflicts());
+        let main_diff = self.repo.diff_tree_to_tree(Some(&self.as_commit().parent(0)?.tree()?), Some(&self.as_commit().tree()?), None)?;
+
+        let new_remote_index = self.repo.apply_to_tree(&self.git_repo.base_commit().unwrap().tree()?, &main_diff, None)?;
+        assert!(!new_remote_index.has_conflicts());
+
+        let patch = self.repo.diff_tree_to_index(Some(&remote_commit.tree()?), Some(&new_remote_index), None)?;
+        let mut index = self.repo.apply_to_tree(&remote_commit.tree()?, &patch, None)?;
+
+        if index.has_conflicts() {
+            for c in index.conflicts()? {
+                let c = c?;
+                println!("{} {} {}", 
+                    c.our.as_ref().map(|our| String::from_utf8(our.path.clone()).unwrap()).unwrap_or("NONE".to_string()),
+                    c.their.map(|our| String::from_utf8(our.path).unwrap()).unwrap_or("NONE".to_string()),
+                    c.ancestor.map(|our| String::from_utf8(our.path).unwrap()).unwrap_or("NONE".to_string())
+                );
+            }
+            panic!("Conflicts while cherry-picking");
+        }
         if index.is_empty() {
             return std::result::Result::Ok(self);
         }
@@ -154,8 +166,7 @@ impl<'repo> TrackedCommit<'repo> {
             return Ok(self);
         } else {
             let local_branch_commit = self.repo.find_commit(local_branch_head)?;
-            let oid = self
-                .merge(&local_branch_commit, &remote_branch_commit)?;
+            let oid = self.merge(&local_branch_commit, &remote_branch_commit)?;
             self.repo.find_commit(oid)?
         };
 
@@ -303,9 +314,10 @@ impl<'repo> TrackedCommit<'repo> {
                 println!("Conclict {:?}", CString::new(c.our.unwrap().path).unwrap())
             }
 
+            self.repo.checkout_tree(commit1.tree()?.as_object(), None)?;
             self.repo
-                .checkout_tree(commit1.tree()?.as_object(), None)?;
-            self.repo.set_head_detached(commit1.id()).context("Detach HEAD")?;
+                .set_head_detached(commit1.id())
+                .context("Detach HEAD")?;
             self.repo.merge(
                 &[&self.repo.find_annotated_commit(commit2.id())?],
                 None,
@@ -355,6 +367,11 @@ impl<'repo> TrackedCommit<'repo> {
 impl Debug for TrackedCommit<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let commit = &self.commit;
-        write!(f, "Tracked Commit: {:?} {:?}", commit.id(), commit.message())
+        write!(
+            f,
+            "Tracked Commit: {:?} {:?}",
+            commit.id(),
+            commit.message()
+        )
     }
 }

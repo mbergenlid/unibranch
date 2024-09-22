@@ -197,7 +197,11 @@ impl GitRepo {
         let mut walk = self.repo.revwalk()?;
         walk.set_sorting(git2::Sort::TOPOLOGICAL.union(git2::Sort::REVERSE))?;
 
-        let head = self.repo.find_branch(&self.current_branch_name, git2::BranchType::Local)?.into_reference().peel_to_commit()?;
+        let head = self
+            .repo
+            .find_branch(&self.current_branch_name, git2::BranchType::Local)?
+            .into_reference()
+            .peel_to_commit()?;
         walk.push(head.id())?;
 
         let base_commit_id = if let Some(sync_state) = &self.sync_state {

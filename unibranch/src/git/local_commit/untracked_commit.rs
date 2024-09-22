@@ -1,4 +1,3 @@
-
 use std::fmt::Debug;
 
 use anyhow::Context;
@@ -121,6 +120,11 @@ impl<'repo> UnTrackedCommit<'repo> {
 impl Debug for UnTrackedCommit<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let commit = &self.commit;
-        write!(f, "Untracked Commit: {:?} {:?}", commit.id(), commit.message())
+        write!(
+            f,
+            "Untracked Commit: {:?} {:?}",
+            commit.id(),
+            commit.message()
+        )
     }
 }
