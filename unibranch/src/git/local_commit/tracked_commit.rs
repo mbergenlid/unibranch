@@ -82,21 +82,43 @@ impl<'repo> TrackedCommit<'repo> {
     pub fn update_local_branch_head(self) -> Result<Self, git2::Error> {
         let remote_commit = self.repo.find_commit(self.meta_data().remote_commit)?;
 
-        let main_diff = self.repo.diff_tree_to_tree(Some(&self.as_commit().parent(0)?.tree()?), Some(&self.as_commit().tree()?), None)?;
+        let main_diff = self.repo.diff_tree_to_tree(
+            Some(&self.as_commit().parent(0)?.tree()?),
+            Some(&self.as_commit().tree()?),
+            None,
+        )?;
 
-        let new_remote_index = self.repo.apply_to_tree(&self.git_repo.base_commit().unwrap().tree()?, &main_diff, None)?;
+        let new_remote_index = self.repo.apply_to_tree(
+            &self.git_repo.base_commit().unwrap().tree()?,
+            &main_diff,
+            None,
+        )?;
         assert!(!new_remote_index.has_conflicts());
 
-        let patch = self.repo.diff_tree_to_index(Some(&remote_commit.tree()?), Some(&new_remote_index), None)?;
-        let mut index = self.repo.apply_to_tree(&remote_commit.tree()?, &patch, None)?;
+        let patch = self.repo.diff_tree_to_index(
+            Some(&remote_commit.tree()?),
+            Some(&new_remote_index),
+            None,
+        )?;
+        let mut index = self
+            .repo
+            .apply_to_tree(&remote_commit.tree()?, &patch, None)?;
 
         if index.has_conflicts() {
             for c in index.conflicts()? {
                 let c = c?;
-                println!("{} {} {}", 
-                    c.our.as_ref().map(|our| String::from_utf8(our.path.clone()).unwrap()).unwrap_or("NONE".to_string()),
-                    c.their.map(|our| String::from_utf8(our.path).unwrap()).unwrap_or("NONE".to_string()),
-                    c.ancestor.map(|our| String::from_utf8(our.path).unwrap()).unwrap_or("NONE".to_string())
+                println!(
+                    "{} {} {}",
+                    c.our
+                        .as_ref()
+                        .map(|our| String::from_utf8(our.path.clone()).unwrap())
+                        .unwrap_or("NONE".to_string()),
+                    c.their
+                        .map(|our| String::from_utf8(our.path).unwrap())
+                        .unwrap_or("NONE".to_string()),
+                    c.ancestor
+                        .map(|our| String::from_utf8(our.path).unwrap())
+                        .unwrap_or("NONE".to_string())
                 );
             }
             panic!("Conflicts while cherry-picking");

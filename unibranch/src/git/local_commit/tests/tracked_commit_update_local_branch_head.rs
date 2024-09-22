@@ -9,7 +9,7 @@ use test_repo::{RemoteRepo, TestRepoWithRemote};
 use super::tracked;
 
 fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
-    GitRepo::open(value.local_repo_dir.path()).unwrap()
+    GitRepo::open(value.path()).unwrap()
 }
 
 #[test]
@@ -32,7 +32,7 @@ fn test_simple_update() {
         .create_file("file3", "Yaay, no conflicts")
         .commit_all_amend();
 
-    let git_repo = GitRepo::open(local.local_repo_dir.path()).unwrap();
+    let git_repo = GitRepo::open(local.path()).unwrap();
 
     let commit = git_repo.find_unpushed_commit("HEAD").unwrap();
     let tracked_commit = match commit {
@@ -90,7 +90,7 @@ fn test_update_local() {
         .create_file("file2", "Hello, Conflicting World!")
         .commit_all_amend();
 
-    let git_repo = GitRepo::open(local.local_repo_dir.path()).unwrap();
+    let git_repo = GitRepo::open(local.path()).unwrap();
 
     let commit = git_repo.find_unpushed_commit("HEAD").unwrap();
     let tracked_commit = match commit {
@@ -151,7 +151,7 @@ fn test_update_with_a_rebase_first() {
 
     let local = local.pull_rebase();
 
-    let git_repo = GitRepo::open(local.local_repo_dir.path()).unwrap();
+    let git_repo = GitRepo::open(local.path()).unwrap();
 
     let commit = git_repo.find_unpushed_commit("HEAD").unwrap();
     let tracked_commit = match commit {
@@ -199,7 +199,7 @@ fn nothing_should_happen_if_no_changes() {
 
     create::execute(create::Options::default(), git_repo(&local)).unwrap();
 
-    let git_repo = GitRepo::open(local.local_repo_dir.path()).unwrap();
+    let git_repo = GitRepo::open(local.path()).unwrap();
 
     let tracked_commit = tracked(git_repo.find_unpushed_commit("HEAD").unwrap());
     let original_branch_head = tracked_commit.meta_data().remote_commit;

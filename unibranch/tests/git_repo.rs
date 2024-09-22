@@ -26,7 +26,7 @@ fn init_repo(remote: &RemoteRepo) -> TestRepoWithRemote {
 fn find_commit_by_head() {
     let remote_repo = RemoteRepo::new();
     let test_repo = init_repo(&remote_repo);
-    let repo = GitRepo::open(test_repo.local_repo_dir.path()).unwrap();
+    let repo = GitRepo::open(test_repo.path()).unwrap();
 
     assert_eq!(
         repo.find_unpushed_commit("HEAD").unwrap().id(),
@@ -38,7 +38,7 @@ fn find_commit_by_head() {
 fn find_commit_by_parent_head() {
     let remote_repo = RemoteRepo::new();
     let test_repo = init_repo(&remote_repo);
-    let repo = GitRepo::open(test_repo.local_repo_dir.path()).unwrap();
+    let repo = GitRepo::open(test_repo.path()).unwrap();
 
     assert_eq!(
         repo.find_unpushed_commit("HEAD^").unwrap().id(),
@@ -50,7 +50,7 @@ fn find_commit_by_parent_head() {
 fn find_commit_by_parent_ancestors() {
     let remote_repo = RemoteRepo::new();
     let test_repo = init_repo(&remote_repo);
-    let repo = GitRepo::open(test_repo.local_repo_dir.path()).unwrap();
+    let repo = GitRepo::open(test_repo.path()).unwrap();
 
     assert_eq!(
         repo.find_unpushed_commit("HEAD~2").unwrap().id(),
@@ -62,7 +62,7 @@ fn find_commit_by_parent_ancestors() {
 fn find_commit_from_commit() {
     let remote_repo = RemoteRepo::new();
     let test_repo = init_repo(&remote_repo);
-    let repo = GitRepo::open(test_repo.local_repo_dir.path()).unwrap();
+    let repo = GitRepo::open(test_repo.path()).unwrap();
 
     assert_eq!(
         repo.find_unpushed_commit(&format!("{}^", test_repo.find_commit(1).id()))
@@ -83,7 +83,7 @@ fn find_commit_from_commit() {
 fn find_an_already_pushed_commit() {
     let remote_repo = RemoteRepo::new();
     let test_repo = init_repo(&remote_repo);
-    let repo = GitRepo::open(test_repo.local_repo_dir.path()).unwrap();
+    let repo = GitRepo::open(test_repo.path()).unwrap();
 
     assert!(repo.find_unpushed_commit("HEAD~4").is_err());
 }

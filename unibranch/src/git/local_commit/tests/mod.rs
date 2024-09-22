@@ -31,7 +31,7 @@ fn setup_repo(remote: &RemoteRepo) -> TestRepoWithRemote {
     {
         create::execute(
             create::Options::default(),
-            GitRepo::open(local.local_repo_dir.path()).unwrap(),
+            GitRepo::open(local.path()).unwrap(),
         )
         .unwrap();
     }

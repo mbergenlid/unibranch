@@ -9,30 +9,42 @@ use std::{
 
 use git2::{Commit, Oid};
 use pretty_assertions::assert_eq;
-use tempfile::{tempdir, TempDir};
+use tempfile::tempdir;
 
 pub struct RemoteRepo {
-    dir: TempDir,
+    dir: Box<dyn AsRef<Path>>,
 }
 
 impl RemoteRepo {
     pub fn new() -> Self {
         let dir = tempdir().unwrap();
-        println!("Remote repo: {}", dir.path().display());
-        let _ = git2::Repository::init_bare(dir.path()).unwrap();
-        RemoteRepo { dir }
+        Self::new_in(dir)
+    }
+
+    pub fn new_in<P: AsRef<Path> + 'static>(dir: P) -> Self {
+        println!("Remote repo: {}", dir.as_ref().display());
+        let _ = git2::Repository::init_bare(dir.as_ref()).unwrap();
+        RemoteRepo { dir: Box::new(dir) }
     }
 
     pub fn clone_repo(&self) -> TestRepoWithRemote {
         let local_repo_dir = tempdir().unwrap();
-        println!("Local repo: {}", local_repo_dir.path().display());
+        self.clone_repo_into(local_repo_dir)
+    }
+
+    pub fn clone_repo_into<P>(&self, dir: P) -> TestRepoWithRemote
+    where
+        P: AsRef<Path> + 'static,
+    {
+        let local_repo_dir = dir;
+        println!("Local repo: {}", local_repo_dir.as_ref().display());
         let local_repo = git2::Repository::clone(
-            &String::from_utf8_lossy(self.dir.path().as_os_str().as_bytes()),
-            local_repo_dir.path(),
+            &String::from_utf8_lossy((*self.dir).as_ref().as_os_str().as_bytes()),
+            local_repo_dir.as_ref(),
         )
         .unwrap();
         TestRepoWithRemote {
-            local_repo_dir,
+            local_repo_dir: Box::new(local_repo_dir),
             _remote: self,
             local_repo,
         }
@@ -46,15 +58,20 @@ impl Default for RemoteRepo {
 }
 
 pub struct TestRepoWithRemote<'a> {
-    pub local_repo_dir: TempDir,
+    local_repo_dir: Box<dyn AsRef<Path>>,
     _remote: &'a RemoteRepo,
     local_repo: git2::Repository,
 }
 
 impl<'a> TestRepoWithRemote<'a> {
+
+    pub fn path(&self) -> &Path {
+        (*self.local_repo_dir).as_ref()
+    }
+
     #[allow(dead_code)]
     pub fn head_branch(&self) -> String {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         String::from_utf8(
             Command::new("git")
                 .current_dir(current_dir)
@@ -81,7 +98,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn checkout(self, branch: &str) -> Self {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         assert!(Command::new("git")
             .current_dir(current_dir)
             .arg("checkout")
@@ -97,7 +114,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn run_command(&self) -> Command {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         let mut command = Command::new("git");
 
         command
@@ -112,7 +129,7 @@ impl<'a> TestRepoWithRemote<'a> {
     where
         P: AsRef<Path>,
     {
-        let file_path = self.local_repo_dir.path().join(path);
+        let file_path = (*self.local_repo_dir).as_ref().join(path);
         let mut tmp_file = File::create(file_path).unwrap();
         writeln!(tmp_file, "{}", content).unwrap();
         self
@@ -123,14 +140,14 @@ impl<'a> TestRepoWithRemote<'a> {
     where
         P: AsRef<Path>,
     {
-        let file_path = self.local_repo_dir.path().join(path);
+        let file_path = (*self.local_repo_dir).as_ref().join(path);
         let mut tmp_file = OpenOptions::new().append(true).open(file_path).unwrap();
         writeln!(tmp_file, "{}", content).unwrap();
         self
     }
 
     pub fn add_all(self) -> Self {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         assert!(Command::new("git")
             .current_dir(current_dir)
             .arg("add")
@@ -144,7 +161,7 @@ impl<'a> TestRepoWithRemote<'a> {
     }
 
     pub fn commit_all(self, msg: &str) -> Self {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         assert!(Command::new("git")
             .current_dir(current_dir)
             .arg("add")
@@ -170,7 +187,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn commit_all_amend(self) -> Self {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         assert!(Command::new("git")
             .current_dir(current_dir)
             .arg("add")
@@ -196,7 +213,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn commit_all_amend_with_message(self, message: &str) -> Self {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         assert!(Command::new("git")
             .current_dir(current_dir)
             .arg("add")
@@ -223,7 +240,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn commit_all_fixup(self, fixup_commit: Oid) -> Self {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         assert!(Command::new("git")
             .current_dir(current_dir)
             .arg("add")
@@ -259,7 +276,7 @@ impl<'a> TestRepoWithRemote<'a> {
     }
 
     pub fn push(self) -> Self {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
 
         assert!(Command::new("git")
             .current_dir(current_dir)
@@ -274,7 +291,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn pull_rebase(self) -> Self {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
 
         assert!(Command::new("git")
             .current_dir(current_dir)
@@ -290,7 +307,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn fetch(self) -> Self {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
 
         assert!(Command::new("git")
             .current_dir(current_dir)
@@ -305,7 +322,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn fetch_ref(self, rev: &str) -> Self {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
 
         assert!(Command::new("git")
             .current_dir(current_dir)
@@ -321,7 +338,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn ls_remote_heads(&self, name: &str) -> Output {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         Command::new("git")
             .current_dir(current_dir)
             .arg("ls-remote")
@@ -334,7 +351,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn diff(&self, ref1: &str, ref2: &str) -> Output {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         Command::new("git")
             .current_dir(current_dir)
             .arg("diff")
@@ -346,7 +363,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn show(&self, rev: &str) {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         let out = String::from_utf8(
             Command::new("git")
                 .current_dir(current_dir)
@@ -362,7 +379,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn print_log(&self) {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
         let out = String::from_utf8(
             Command::new("git")
                 .current_dir(current_dir)
@@ -377,7 +394,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn find_note(&self, rev: &str) -> String {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
 
         let out = Command::new("git")
             .current_dir(current_dir)
@@ -412,7 +429,7 @@ impl<'a> TestRepoWithRemote<'a> {
 
     #[allow(dead_code)]
     pub fn rev_parse(&self, rev: &str) -> String {
-        let current_dir = self.local_repo_dir.path();
+        let current_dir = (*self.local_repo_dir).as_ref();
 
         let out = Command::new("git")
             .current_dir(current_dir)

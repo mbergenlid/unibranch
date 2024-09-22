@@ -11,7 +11,7 @@ use indoc::indoc;
 use pretty_assertions::assert_eq;
 
 fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
-    GitRepo::open(value.local_repo_dir.path()).unwrap()
+    GitRepo::open(value.path()).unwrap()
 }
 
 #[test]

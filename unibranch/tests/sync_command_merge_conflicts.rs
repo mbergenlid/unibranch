@@ -7,7 +7,7 @@ use ubr::{
 };
 
 fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
-    GitRepo::open(value.local_repo_dir.path()).unwrap()
+    GitRepo::open(value.path()).unwrap()
 }
 
 #[test]
@@ -63,7 +63,7 @@ fn test_merge_conflict_from_remote() {
     let sync_state = serde_json::from_reader::<_, SyncState>(
         std::fs::File::open(
             local_repo
-                .local_repo_dir
+                
                 .path()
                 .join(".ubr/SYNC_MERGE_HEAD"),
         )
@@ -90,7 +90,7 @@ fn test_merge_conflict_from_remote() {
 
     {
         let resolved_file = String::from_utf8(
-            std::fs::read(local_repo.local_repo_dir.path().join("File1")).unwrap(),
+            std::fs::read(local_repo.path().join("File1")).unwrap(),
         )
         .unwrap();
 
@@ -179,7 +179,7 @@ fn test_merge_conflict_in_the_middle_of_sync() {
     let sync_state = serde_json::from_reader::<_, SyncState>(
         std::fs::File::open(
             local_repo
-                .local_repo_dir
+                
                 .path()
                 .join(".ubr/SYNC_MERGE_HEAD"),
         )
@@ -208,7 +208,7 @@ fn test_merge_conflict_in_the_middle_of_sync() {
     {
         //Assert that resolution was succesful
         let resolved_file = String::from_utf8(
-            std::fs::read(local_repo.local_repo_dir.path().join("File1")).unwrap(),
+            std::fs::read(local_repo.path().join("File1")).unwrap(),
         )
         .unwrap();
 
@@ -296,7 +296,7 @@ fn test_merge_conflict_in_the_middle_of_sync_2() {
     let sync_state = serde_json::from_reader::<_, SyncState>(
         std::fs::File::open(
             local_repo
-                .local_repo_dir
+                
                 .path()
                 .join(".ubr/SYNC_MERGE_HEAD"),
         )
@@ -325,7 +325,7 @@ fn test_merge_conflict_in_the_middle_of_sync_2() {
     {
         //Assert that resolution was succesful
         let resolved_file = String::from_utf8(
-            std::fs::read(local_repo.local_repo_dir.path().join("File1")).unwrap(),
+            std::fs::read(local_repo.path().join("File1")).unwrap(),
         )
         .unwrap();
 

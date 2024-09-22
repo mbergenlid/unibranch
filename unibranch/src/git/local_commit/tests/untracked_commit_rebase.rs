@@ -15,7 +15,7 @@ fn test_rebase() {
         .append_file("File1", "Starting on a new feature")
         .commit_all("feature 1");
 
-    let git_repo = GitRepo::open(local_repo.local_repo_dir.path()).unwrap();
+    let git_repo = GitRepo::open(local_repo.path()).unwrap();
     let untracked_commit = match git_repo.find_unpushed_commit("HEAD^").unwrap() {
         MainCommit::UnTracked(c) => c,
         MainCommit::Tracked(_) => panic!("Expected an untracked commit"),

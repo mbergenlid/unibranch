@@ -35,7 +35,7 @@ fn nothing_should_happen_if_origin_has_not_changed() {
     let remote = RemoteRepo::new();
     let local = setup_repo(&remote);
 
-    let git_repo = GitRepo::open(local.local_repo_dir.path()).unwrap();
+    let git_repo = GitRepo::open(local.path()).unwrap();
     let tracked_commit = super::tracked(git_repo.find_unpushed_commit("HEAD").unwrap());
     local.print_log();
 
@@ -77,7 +77,7 @@ fn new_changes_main_should_be_merged_in() {
     let local = local.pull_rebase();
     local.print_log();
 
-    let git_repo = GitRepo::open(local.local_repo_dir.path()).unwrap();
+    let git_repo = GitRepo::open(local.path()).unwrap();
 
     let tracked_commit = super::tracked(git_repo.find_unpushed_commit("HEAD").unwrap());
 

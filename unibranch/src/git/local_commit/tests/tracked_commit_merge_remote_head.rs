@@ -31,7 +31,7 @@ fn should_not_merge_if_remote_commit_is_descendant_of_local() {
             .head()
     };
 
-    let git_repo = GitRepo::open(&local.local_repo_dir).unwrap();
+    let git_repo = GitRepo::open(local.path()).unwrap();
     let local = local.fetch();
 
     let tracked_commit = super::tracked(git_repo.find_unpushed_commit("HEAD").unwrap());
@@ -81,7 +81,7 @@ fn should_not_merge_if_local_commit_is_descendant_of_remote() {
     let remote = RemoteRepo::new();
     let local = setup_repo(&remote);
 
-    let git_repo = GitRepo::open(&local.local_repo_dir).unwrap();
+    let git_repo = GitRepo::open(local.path()).unwrap();
     let local = {
         // Make a new local commit
 
@@ -121,7 +121,7 @@ fn test_merge() {
     let remote = RemoteRepo::new();
     let local = setup_repo(&remote);
 
-    let git_repo = GitRepo::open(&local.local_repo_dir).unwrap();
+    let git_repo = GitRepo::open(local.path()).unwrap();
     let (local, tracked_commit) = {
         // Make a new local commit
 

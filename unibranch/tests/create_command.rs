@@ -13,7 +13,7 @@ fn create_options(commit_ref: Option<Oid>) -> create::Options {
 }
 
 fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
-    GitRepo::open(value.local_repo_dir.path()).unwrap()
+    GitRepo::open(value.path()).unwrap()
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn should_not_be_able_to_call_create_for_same_commit_twice() {
         .append_file("File1", "Another Hello, World!")
         .commit_all("commit2");
 
-    let current_dir = repo.local_repo_dir.path();
+    let current_dir = repo.path();
 
     create::execute(create_options(None), GitRepo::open(current_dir).unwrap()).unwrap();
 

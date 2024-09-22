@@ -9,7 +9,7 @@ use ubr::{
 use test_repo::{RemoteRepo, TestRepoWithRemote};
 
 fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
-    GitRepo::open(value.local_repo_dir.path()).unwrap()
+    GitRepo::open(value.path()).unwrap()
 }
 
 fn push_options(commit_ref: Option<Oid>) -> create::Options {
