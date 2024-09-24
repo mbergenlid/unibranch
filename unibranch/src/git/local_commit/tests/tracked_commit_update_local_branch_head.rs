@@ -151,6 +151,12 @@ fn test_update_with_a_rebase_first() {
 
     let local = local.pull_rebase();
 
+    //     Commit 1 *
+    //              |
+    //              |   * remote-commit
+    // Other commit *<-/-----------------(origin/master)
+    //              | /
+    //      Initial *
     let git_repo = GitRepo::open(local.path()).unwrap();
 
     let commit = git_repo.find_unpushed_commit("HEAD").unwrap();
@@ -163,7 +169,7 @@ fn test_update_with_a_rebase_first() {
     let new_commit = format!("{}", tracked_commit.meta_data().remote_commit);
 
     let actual_diff =
-        String::from_utf8(local.diff(&format!("{}^^", new_commit), &new_commit).stdout)
+        String::from_utf8(local.diff("origin/master", &new_commit).stdout)
             .expect("Output of diff is not valid UTF-8");
     let expected_diff = indoc! {"
         diff --git a/file2 b/file2
