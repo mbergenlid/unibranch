@@ -168,9 +168,8 @@ fn test_update_with_a_rebase_first() {
 
     let new_commit = format!("{}", tracked_commit.meta_data().remote_commit);
 
-    let actual_diff =
-        String::from_utf8(local.diff("origin/master", &new_commit).stdout)
-            .expect("Output of diff is not valid UTF-8");
+    let actual_diff = String::from_utf8(local.diff("origin/master", &new_commit).stdout)
+        .expect("Output of diff is not valid UTF-8");
     let expected_diff = indoc! {"
         diff --git a/file2 b/file2
         new file mode 100644

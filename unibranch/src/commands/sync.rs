@@ -24,9 +24,9 @@ pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
         match original_commit {
             MainCommit::Tracked(tracked_commit) => {
                 let new_parent_1 = tracked_commit
+                    .sync_with_main()?
                     .update_local_branch_head()?
-                    .merge_remote_head(Some(&parent_commit))?
-                    .sync_with_main()?;
+                    .merge_remote_head(Some(&parent_commit))?;
 
                 repo.remote().push(new_parent_1.meta_data())?;
                 parent_commit = new_parent_1.commit();

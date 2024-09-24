@@ -61,13 +61,7 @@ fn test_merge_conflict_from_remote() {
     assert_eq!(format!("{}", result.unwrap_err()), expected_error_message);
 
     let sync_state = serde_json::from_reader::<_, SyncState>(
-        std::fs::File::open(
-            local_repo
-                
-                .path()
-                .join(".ubr/SYNC_MERGE_HEAD"),
-        )
-        .unwrap(),
+        std::fs::File::open(local_repo.path().join(".ubr/SYNC_MERGE_HEAD")).unwrap(),
     )
     .unwrap();
 
@@ -89,10 +83,8 @@ fn test_merge_conflict_from_remote() {
         .add_all();
 
     {
-        let resolved_file = String::from_utf8(
-            std::fs::read(local_repo.path().join("File1")).unwrap(),
-        )
-        .unwrap();
+        let resolved_file =
+            String::from_utf8(std::fs::read(local_repo.path().join("File1")).unwrap()).unwrap();
 
         assert_eq!(
             resolved_file,
@@ -177,13 +169,7 @@ fn test_merge_conflict_in_the_middle_of_sync() {
     assert_eq!(format!("{}", result.unwrap_err()), expected_error_message);
 
     let sync_state = serde_json::from_reader::<_, SyncState>(
-        std::fs::File::open(
-            local_repo
-                
-                .path()
-                .join(".ubr/SYNC_MERGE_HEAD"),
-        )
-        .unwrap(),
+        std::fs::File::open(local_repo.path().join(".ubr/SYNC_MERGE_HEAD")).unwrap(),
     )
     .unwrap();
 
@@ -207,10 +193,8 @@ fn test_merge_conflict_in_the_middle_of_sync() {
 
     {
         //Assert that resolution was succesful
-        let resolved_file = String::from_utf8(
-            std::fs::read(local_repo.path().join("File1")).unwrap(),
-        )
-        .unwrap();
+        let resolved_file =
+            String::from_utf8(std::fs::read(local_repo.path().join("File1")).unwrap()).unwrap();
 
         assert_eq!(
             resolved_file,
@@ -294,13 +278,7 @@ fn test_merge_conflict_in_the_middle_of_sync_2() {
     assert_eq!(format!("{}", result.unwrap_err()), expected_error_message);
 
     let sync_state = serde_json::from_reader::<_, SyncState>(
-        std::fs::File::open(
-            local_repo
-                
-                .path()
-                .join(".ubr/SYNC_MERGE_HEAD"),
-        )
-        .unwrap(),
+        std::fs::File::open(local_repo.path().join(".ubr/SYNC_MERGE_HEAD")).unwrap(),
     )
     .unwrap();
 
@@ -324,10 +302,8 @@ fn test_merge_conflict_in_the_middle_of_sync_2() {
 
     {
         //Assert that resolution was succesful
-        let resolved_file = String::from_utf8(
-            std::fs::read(local_repo.path().join("File1")).unwrap(),
-        )
-        .unwrap();
+        let resolved_file =
+            String::from_utf8(std::fs::read(local_repo.path().join("File1")).unwrap()).unwrap();
 
         assert_eq!(
             resolved_file,

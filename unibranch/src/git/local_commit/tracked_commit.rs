@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 use anyhow::Context;
 use anyhow::Ok;
-use git2::{Branch, Commit, FileFavor, MergeOptions, Oid, Repository};
+use git2::{Branch, Commit, Oid, Repository};
 use indoc::formatdoc;
 use tracing::info;
 
@@ -79,25 +79,22 @@ impl<'repo> TrackedCommit<'repo> {
     //              |  /
     //              | /
     //  (origin)    *
-    pub fn update_local_branch_head(self) -> Result<Self, git2::Error> {
+    pub fn update_local_branch_head(self) -> anyhow::Result<Self> {
         let remote_commit = self.repo.find_commit(self.meta_data().remote_commit)?;
 
-        let main_diff = self.repo.diff_tree_to_tree(
-            Some(&self.as_commit().parent(0)?.tree()?),
-            Some(&self.as_commit().tree()?),
-            None,
-        )?;
+        let origin_main_commit = self.git_repo.base_commit()?;
+        let complete_index = self
+            .repo
+            .cherrypick_commit(self.as_commit(), &origin_main_commit, 0, None)
+            .context("Cherry picking directly on master")?;
 
-        let new_remote_index = self.repo.apply_to_tree(
-            &self.git_repo.base_commit().unwrap().tree()?,
-            &main_diff,
-            None,
-        )?;
-        assert!(!new_remote_index.has_conflicts());
+        if complete_index.has_conflicts() {
+            anyhow::bail!("There are conflicts");
+        }
 
         let patch = self.repo.diff_tree_to_index(
             Some(&remote_commit.tree()?),
-            Some(&new_remote_index),
+            Some(&complete_index),
             None,
         )?;
         let mut index = self
@@ -156,23 +153,23 @@ impl<'repo> TrackedCommit<'repo> {
         })
     }
 
-    //
-    // Merge remote_branch_head with local_branch_head unless remote_branch_head any
-    // of those are a direct dependant on the other.
-    //
-    // Will not update from remote.
-    //
-    //
-    //                 *
-    //                 |    * (Merge) <---- Produces this merge unless.
-    //                 |   / \
-    //                 *  /   * (remote_branch_head)
-    //                 | * <-/------------------------ (local_branch_head)
-    //                 |  \ /
-    //           c1    *   *
-    //                 |  /
-    //                 | /
-    //     (origin)    *
+    ///
+    /// Merge remote_branch_head with local_branch_head unless remote_branch_head any
+    /// of those are a direct dependant on the other.
+    ///
+    /// Will not update from remote.
+    /// ```text
+    ///                 *
+    ///                 |    * (Merge) <---- Produces this merge unless.
+    ///                 |   / \
+    ///                 *  /   * (remote_branch_head)
+    ///                 | * <-/------------------------ (local_branch_head)
+    ///                 |  \ /
+    ///           c1    *   *
+    ///                 |  /
+    ///                 | /
+    ///     (origin)    *
+    /// ```
     pub fn merge_remote_head(self, new_parent: Option<&Commit>) -> anyhow::Result<Self> {
         let remote_branch_commit = self.remote_branch()?.get().peel_to_commit()?;
         let remote_branch_head = remote_branch_commit.id();

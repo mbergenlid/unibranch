@@ -1,7 +1,11 @@
 use std::path::PathBuf;
 
 use clap::{command, Parser, Subcommand};
-use indoc::indoc;
+
+mod local_commit_changed;
+mod rebased_local_commit_unchanged;
+mod remote_branch_changed_local_unchanged;
+mod rebased_local_commit_changed;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -18,7 +22,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Generate,
+    RebasedLocalCommitUnchanged,
+    LocalCommitChanged,
+    RemoteBranchChangedLocalUnchanged,
+    RebasedLocalCommitChanged,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -58,27 +65,17 @@ fn main() -> anyhow::Result<()> {
     let local_repo = remote_repo.clone_repo_into(local_dir);
 
     match cli.command {
-        Commands::Generate => local_repo
-            .create_file(
-                "File1",
-                indoc! {"
-                Hello World!
+        Commands::RebasedLocalCommitUnchanged => {
+            rebased_local_commit_unchanged::init_repo(&remote_repo, local_repo)
+        }
+        Commands::LocalCommitChanged => local_commit_changed::init_repo(local_repo),
+        Commands::RemoteBranchChangedLocalUnchanged => {
+            remote_branch_changed_local_unchanged::init_repo(&remote_repo, local_repo)
+        },
+        Commands::RebasedLocalCommitChanged => {
+            rebased_local_commit_changed::init_repo(&remote_repo, local_repo)
+        }
 
-                This is my very first file
-                "},
-            )
-            .commit_all("First commit")
-            .push()
-            .create_file(
-                "File1",
-                indoc! {"
-            Hello World!
-
-            More lines..
-
-            This is my very first file
-            "},
-            ).commit_all("add more lines"),
     };
     Ok(())
 }

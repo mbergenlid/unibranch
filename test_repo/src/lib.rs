@@ -64,7 +64,6 @@ pub struct TestRepoWithRemote<'a> {
 }
 
 impl<'a> TestRepoWithRemote<'a> {
-
     pub fn path(&self) -> &Path {
         (*self.local_repo_dir).as_ref()
     }
