@@ -22,7 +22,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Create(create::Options),
-    Pull(sync::Options),
+    Sync(sync::Options),
     Push,
 }
 
@@ -49,7 +49,7 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Create(config) => create::execute(config, git_repo)?,
-        Commands::Pull(config) => sync::execute(config, git_repo)?,
+        Commands::Sync(config) => sync::execute(config, git_repo)?,
         Commands::Push => push::execute(".")?,
     };
     Ok(())
