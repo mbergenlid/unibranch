@@ -3,6 +3,8 @@ use std::fmt::Debug;
 
 use anyhow::Context;
 use anyhow::Ok;
+use git2::DiffFormat;
+use git2::MergeOptions;
 use git2::{Branch, Commit, Oid, Repository};
 use indoc::formatdoc;
 use tracing::info;
@@ -83,9 +85,15 @@ impl<'repo> TrackedCommit<'repo> {
         let remote_commit = self.repo.find_commit(self.meta_data().remote_commit)?;
 
         let origin_main_commit = self.git_repo.base_commit()?;
+        //let origin_main_commit = self.repo.find_commit(merge_base)?;
         let complete_index = self
             .repo
-            .cherrypick_commit(self.as_commit(), &origin_main_commit, 0, None)
+            .cherrypick_commit(
+                self.as_commit(),
+                &origin_main_commit,
+                0,
+                Some(&MergeOptions::default().file_favor(git2::FileFavor::Theirs)),
+            )
             .context("Cherry picking directly on master")?;
 
         if complete_index.has_conflicts() {
@@ -97,12 +105,14 @@ impl<'repo> TrackedCommit<'repo> {
             Some(&complete_index),
             None,
         )?;
-        let mut index = self
+        // Split the patch
+        let mut new_index = self
             .repo
-            .apply_to_tree(&remote_commit.tree()?, &patch, None)?;
+            .apply_to_tree(&remote_commit.tree()?, &patch, None)
+            .context("Apply commit patch to old branch")?;
 
-        if index.has_conflicts() {
-            for c in index.conflicts()? {
+        if new_index.has_conflicts() {
+            for c in new_index.conflicts()? {
                 let c = c?;
                 println!(
                     "{} {} {}",
@@ -120,10 +130,10 @@ impl<'repo> TrackedCommit<'repo> {
             }
             panic!("Conflicts while cherry-picking");
         }
-        if index.is_empty() {
+        if new_index.is_empty() {
             return std::result::Result::Ok(self);
         }
-        let tree_id = index.write_tree_to(self.repo)?;
+        let tree_id = new_index.write_tree_to(self.repo)?;
         if tree_id == remote_commit.tree()?.id() {
             return std::result::Result::Ok(self);
         }
@@ -171,6 +181,7 @@ impl<'repo> TrackedCommit<'repo> {
     ///     (origin)    *
     /// ```
     pub fn merge_remote_head(self, new_parent: Option<&Commit>) -> anyhow::Result<Self> {
+        // TODO: This should not take in a parent. The rebase should happen after
         let remote_branch_commit = self.remote_branch()?.get().peel_to_commit()?;
         let remote_branch_head = remote_branch_commit.id();
         let local_branch_head = self.meta_data().remote_commit;

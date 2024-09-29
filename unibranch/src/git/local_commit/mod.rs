@@ -57,6 +57,13 @@ impl<'repo> MainCommit<'repo> {
             MainCommit::Tracked(c) => c.as_commit().id(),
         }
     }
+
+    pub fn message(&self) -> Option<&str> {
+        match self {
+            MainCommit::UnTracked(c) => c.as_commit().message(),
+            MainCommit::Tracked(c) => c.as_commit().message(),
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]

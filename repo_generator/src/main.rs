@@ -3,9 +3,10 @@ use std::path::PathBuf;
 use clap::{command, Parser, Subcommand};
 
 mod local_commit_changed;
+mod rebase_with_conflict;
+mod rebased_local_commit_changed;
 mod rebased_local_commit_unchanged;
 mod remote_branch_changed_local_unchanged;
-mod rebased_local_commit_changed;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -26,6 +27,7 @@ enum Commands {
     LocalCommitChanged,
     RemoteBranchChangedLocalUnchanged,
     RebasedLocalCommitChanged,
+    RebaseWithConflict,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -71,11 +73,11 @@ fn main() -> anyhow::Result<()> {
         Commands::LocalCommitChanged => local_commit_changed::init_repo(local_repo),
         Commands::RemoteBranchChangedLocalUnchanged => {
             remote_branch_changed_local_unchanged::init_repo(&remote_repo, local_repo)
-        },
+        }
         Commands::RebasedLocalCommitChanged => {
             rebased_local_commit_changed::init_repo(&remote_repo, local_repo)
         }
-
+        Commands::RebaseWithConflict => rebase_with_conflict::init_repo(&remote_repo, local_repo),
     };
     Ok(())
 }

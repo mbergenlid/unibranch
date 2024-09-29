@@ -249,6 +249,8 @@ impl GitRepo {
         let tree = self.repo.find_tree(tree)?;
         let author = self.repo.signature()?;
 
+        tracing::info!("Continuing previous sync {:?}", state);
+
         let merge_commit_id = self.repo.commit(
             None,
             &author,
