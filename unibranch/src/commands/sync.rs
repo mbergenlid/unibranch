@@ -1,5 +1,5 @@
 use anyhow::Context;
-use tracing::{debug, info};
+use tracing::{debug, info, span, Level};
 
 use crate::git::{local_commit::MainCommit, GitRepo};
 
@@ -36,25 +36,38 @@ pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
     } else {
         repo.base_commit()?
     };
+    info!(
+        "Base commit {} {}",
+        parent_commit.id(),
+        parent_commit.message().unwrap_or("")
+    );
     for original_commit in unpushed_commits {
-        info!(
-            "Handling commit {} {}",
-            original_commit.id(),
-            original_commit.message().unwrap_or("")
-        );
         match original_commit {
             MainCommit::Tracked(tracked_commit) => {
+                let _span = span!(
+                    Level::INFO,
+                    "Tracked",
+                    commit = format!("{}", tracked_commit.as_commit().id()),
+                    summary = tracked_commit.as_commit().summary()
+                )
+                .entered();
                 let new_parent_1 = tracked_commit
                     .update_local_branch_head()?
                     .merge_remote_head(Some(&parent_commit))?;
                 //.sync_with_main()?;
 
+                info!("Pushing {} to branch {}", new_parent_1.as_commit().id(), new_parent_1.meta_data().remote_branch_name);
                 repo.remote()
                     .push(new_parent_1.meta_data())
                     .with_context(|| format!("Pushing {}", new_parent_1.meta_data()))?;
                 parent_commit = new_parent_1.commit();
             }
             MainCommit::UnTracked(local_commit) => {
+                info!(
+                    "Untracked commit {} {}",
+                    local_commit.as_commit().id(),
+                    local_commit.as_commit().message().unwrap_or("")
+                );
                 let rebased_commit = local_commit.rebase(&parent_commit)?;
                 parent_commit = rebased_commit.commit();
             }

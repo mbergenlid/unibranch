@@ -84,8 +84,9 @@ impl<'repo> TrackedCommit<'repo> {
     pub fn update_local_branch_head(self) -> anyhow::Result<Self> {
         let remote_commit = self.repo.find_commit(self.meta_data().remote_commit)?;
 
+        info!("Sync with branch head: {}", remote_commit.id());
+
         let origin_main_commit = self.git_repo.base_commit()?;
-        //let origin_main_commit = self.repo.find_commit(merge_base)?;
         let complete_index = self
             .repo
             .cherrypick_commit(
@@ -151,7 +152,7 @@ impl<'repo> TrackedCommit<'repo> {
             )?
         };
 
-        info!("Sync main commit {} as {}", self.commit.id(), new_commit);
+        info!("Produced new commit {}", new_commit);
 
         let new_meta = self.meta_data.update_commit(new_commit);
         self.git_repo.save_meta_data(&self.commit, &new_meta)?;

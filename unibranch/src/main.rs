@@ -1,5 +1,6 @@
 use anyhow::Context;
 use clap::{command, Parser, Subcommand};
+use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 use ubr::{
     commands::{create, push, sync},
@@ -17,6 +18,9 @@ struct Cli {
 
     #[arg(short, long)]
     dry_run: bool,
+
+    #[arg(short, long)]
+    verbose: bool,
 }
 
 #[derive(Subcommand)]
@@ -27,16 +31,26 @@ enum Commands {
 }
 
 fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+    let level = if cli.verbose {
+        LevelFilter::DEBUG
+    } else {
+        LevelFilter::INFO
+    };
     let subscriber = tracing_subscriber::fmt()
-        .compact()
+        .pretty()
         .with_file(false)
         .with_line_number(false)
         .with_thread_ids(false)
+        .without_time()
         .with_target(false)
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive(level.into())
+                .from_env_lossy(),
+        )
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
-    let cli = Cli::parse();
 
     let remote_option = if cli.dry_run {
         CommandOption::DryRun
