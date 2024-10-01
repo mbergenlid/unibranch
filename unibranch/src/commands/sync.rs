@@ -24,7 +24,6 @@ pub struct Options {
 ///```
 pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
     debug!("Syncing local changes with remote");
-    repo.remote().fetch()?;
 
     let unpushed_commits = repo.unpushed_commits()?;
     let mut parent_commit = if options.cont {
