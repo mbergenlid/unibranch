@@ -215,3 +215,53 @@ fn nothing_should_happen_if_no_changes() {
         original_branch_head
     );
 }
+
+#[test]
+fn should_separate_fixup_and_merge_with_main() {
+    let remote = RemoteRepo::new();
+    let local = remote.clone_repo();
+    let local = repo_generator::rebased_local_commit_changed::init_repo(&remote, local);
+
+    let git_repo = GitRepo::open(local.path()).unwrap();
+
+    let tracked_commit = tracked(git_repo.find_unpushed_commit("HEAD").unwrap());
+    let new_tracked_commit = tracked_commit.update_local_branch_head().unwrap();
+
+    let expected_diff = indoc! {"
+        diff --git a/File1 b/File1
+        index 7da932b..78b5315 100644
+        --- a/File1
+        +++ b/File1
+        @@ -1,6 +1,6 @@
+         Hello World!
+         
+        -More lines..
+        +More lines.. + fixup
+         
+         This is my very first file
+         
+   "};
+    local.assert_diff(
+        &format!("{}^", new_tracked_commit.meta_data().remote_commit),
+        &format!("{}", new_tracked_commit.meta_data().remote_commit),
+        expected_diff,
+    );
+
+    local.assert_diff(
+        &format!("{}^^", new_tracked_commit.meta_data().remote_commit),
+        &format!("{}^", new_tracked_commit.meta_data().remote_commit),
+        indoc! {"
+            diff --git a/File2 b/File2
+            new file mode 100644
+            index 0000000..1b59044
+            --- /dev/null
+            +++ b/File2
+            @@ -0,0 +1 @@
+            +Unrelated file from other commit
+        "},
+    );
+
+    let local = local.checkout(&format!("{}", new_tracked_commit.meta_data().remote_commit));
+
+    local.assert_log(vec!["Fixup!", "Sync with main!"]);
+}

@@ -3,8 +3,9 @@ use test_repo::{RemoteRepo, TestRepoWithRemote};
 use indoc::indoc;
 use ubr::{commands::create, git::GitRepo};
 
-/// Creates a repository like this:
+///Creates a repository like this:
 ///
+///```text
 ///
 ///          Commit *
 ///                 |
@@ -15,6 +16,7 @@ use ubr::{commands::create, git::GitRepo};
 ///                 | /
 ///                 |/
 ///    First commit *
+///```
 pub fn init_repo(remote_repo: &RemoteRepo, local_repo: TestRepoWithRemote) {
     let local_repo = local_repo
         .create_file(

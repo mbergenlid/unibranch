@@ -5,6 +5,7 @@ use ubr::{commands::create, git::GitRepo};
 
 /// Creates a repository like this:
 ///
+///```text
 ///
 ///          Commit *
 ///                 |      * remote-commit
@@ -15,6 +16,7 @@ use ubr::{commands::create, git::GitRepo};
 ///                 | /
 ///                 |/
 ///    First commit * <--------------- (origin/master)
+///```
 pub fn init_repo(remote_repo: &RemoteRepo, local_repo: TestRepoWithRemote) {
     let local_repo = local_repo
         .create_file(

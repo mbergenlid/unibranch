@@ -1,8 +1,11 @@
-use std::ffi::CString;
-use std::fmt::Debug;
+use std::{ffi::CString, fmt::Debug};
 
 use anyhow::Context;
 use anyhow::Ok;
+use git2::ApplyOptions;
+use git2::Diff;
+use git2::DiffDelta;
+use git2::Index;
 use git2::MergeOptions;
 use git2::{Branch, Commit, Oid, Repository};
 use indoc::formatdoc;
@@ -106,13 +109,94 @@ impl<'repo> TrackedCommit<'repo> {
             None,
         )?;
         // Split the patch
+        let main_sync_patch = self.repo.diff_tree_to_tree(
+            Some(&remote_commit.tree()?),
+            Some(&origin_main_commit.tree()?),
+            None,
+        )?;
+
+        let mut files_in_main_patch = Vec::new();
+        main_sync_patch.foreach(
+            &mut |file_delta, _| {
+                files_in_main_patch.push((file_delta.old_file().id(), file_delta.new_file().id()));
+                true
+            },
+            None,
+            Some(&mut |_, _| true),
+            None,
+        )?;
+
+        println!("Main patch files: {:?}", files_in_main_patch);
+
+        let new_commit = self.split_and_apply_patch(remote_commit, &patch, |delta| {
+            if let Some(delta) = delta {
+                files_in_main_patch.contains(&(delta.old_file().id(), delta.new_file().id()))
+            } else {
+                panic!("delta callback without any DiffDelta");
+            }
+        })?;
+
+        if new_commit.is_none() {
+            drop(new_commit);
+            return std::result::Result::Ok(self);
+        }
+
+        let new_commit = new_commit.unwrap();
+        let new_commit_id = new_commit.id();
+        drop(new_commit);
+        info!("New patch commit {}", new_commit_id);
+        let new_meta = self.meta_data.update_commit(new_commit_id);
+        self.git_repo.save_meta_data(&self.commit, &new_meta)?;
+        std::result::Result::Ok(TrackedCommit {
+            repo: self.repo,
+            git_repo: self.git_repo,
+            commit: self.commit,
+            meta_data: new_meta,
+        })
+    }
+
+    fn split_and_apply_patch<F>(
+        &self,
+        parent: Commit,
+        patch: &Diff,
+        mut delta_cb: F,
+    ) -> anyhow::Result<Option<Commit<'_>>>
+    where
+        F: FnMut(Option<DiffDelta<'_>>) -> bool,
+    {
         let mut new_index = self
             .repo
-            .apply_to_tree(&remote_commit.tree()?, &patch, None)
+            .apply_to_tree(
+                &parent.tree()?,
+                patch,
+                Some(ApplyOptions::new().delta_callback(|delta| delta_cb(delta))),
+            )
             .context("Apply commit patch to old branch")?;
 
-        if new_index.has_conflicts() {
-            for c in new_index.conflicts()? {
+        let main_sync_commit = self
+            .commit_index(&mut new_index, &parent, "Sync with main!")?
+            .unwrap_or(parent);
+
+        let mut index2 = self
+            .repo
+            .apply_to_tree(
+                &main_sync_commit.tree()?,
+                patch,
+                Some(ApplyOptions::new().delta_callback(|delta| !delta_cb(delta))),
+            )
+            .context("Apply commit patch to old branch")?;
+
+        self.commit_index(&mut index2, &main_sync_commit, "Fixup!")
+    }
+
+    fn commit_index(
+        &self,
+        index: &mut Index,
+        parent: &Commit,
+        msg: &str,
+    ) -> anyhow::Result<Option<Commit<'_>>> {
+        if index.has_conflicts() {
+            for c in index.conflicts()? {
                 let c = c?;
                 println!(
                     "{} {} {}",
@@ -130,37 +214,21 @@ impl<'repo> TrackedCommit<'repo> {
             }
             panic!("Conflicts while cherry-picking");
         }
-        if new_index.is_empty() {
-            return std::result::Result::Ok(self);
+        if index.is_empty() {
+            return std::result::Result::Ok(None);
         }
-        let tree_id = new_index.write_tree_to(self.repo)?;
-        if tree_id == remote_commit.tree()?.id() {
-            return std::result::Result::Ok(self);
+        let tree_id = index.write_tree_to(self.repo)?;
+        if tree_id == parent.tree()?.id() {
+            return std::result::Result::Ok(None);
         }
         let tree = self.repo.find_tree(tree_id)?;
-
         let new_commit = {
             let signature = self.as_commit().author();
-            self.repo.commit(
-                None,
-                &signature,
-                &signature,
-                "Fixup!",
-                &tree,
-                &[&remote_commit],
-            )?
+            self.repo
+                .commit(None, &signature, &signature, msg, &tree, &[parent])?
         };
 
-        info!("Produced new commit {}", new_commit);
-
-        let new_meta = self.meta_data.update_commit(new_commit);
-        self.git_repo.save_meta_data(&self.commit, &new_meta)?;
-        std::result::Result::Ok(TrackedCommit {
-            repo: self.repo,
-            git_repo: self.git_repo,
-            commit: self.commit,
-            meta_data: new_meta,
-        })
+        std::result::Result::Ok(Some(self.repo.find_commit(new_commit)?))
     }
 
     ///

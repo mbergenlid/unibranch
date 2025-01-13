@@ -1,12 +1,10 @@
 use std::path::PathBuf;
 
 use clap::{command, Parser, Subcommand};
-
-mod local_commit_changed;
-mod rebase_with_conflict;
-mod rebased_local_commit_changed;
-mod rebased_local_commit_unchanged;
-mod remote_branch_changed_local_unchanged;
+use repo_generator::{
+    local_commit_changed, rebase_with_conflict, rebased_local_commit_changed,
+    rebased_local_commit_unchanged, remote_branch_changed_local_unchanged,
+};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -75,7 +73,7 @@ fn main() -> anyhow::Result<()> {
             remote_branch_changed_local_unchanged::init_repo(&remote_repo, local_repo)
         }
         Commands::RebasedLocalCommitChanged => {
-            rebased_local_commit_changed::init_repo(&remote_repo, local_repo)
+            rebased_local_commit_changed::init_repo(&remote_repo, local_repo);
         }
         Commands::RebaseWithConflict => rebase_with_conflict::init_repo(&remote_repo, local_repo),
     };

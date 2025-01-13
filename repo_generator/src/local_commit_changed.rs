@@ -5,6 +5,7 @@ use ubr::commands::create;
 
 /// Creates a repository like this:
 ///
+///```text
 ///
 ///          Commit * (amended)
 ///                 |
@@ -15,6 +16,7 @@ use ubr::commands::create;
 ///                 | /
 ///                 |/
 ///    First commit * <-----------(origin/master)
+///```
 pub fn init_repo(local_repo: TestRepoWithRemote) {
     let local_repo = local_repo
         .create_file(

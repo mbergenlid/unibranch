@@ -5,6 +5,7 @@ use ubr::{commands::create, git::GitRepo};
 
 /// Creates a repository like this:
 ///
+///```text
 ///
 ///          Commit * (amended)
 ///                 |
@@ -15,7 +16,11 @@ use ubr::{commands::create, git::GitRepo};
 ///                 | /
 ///                 |/
 ///    First commit *
-pub fn init_repo(remote_repo: &RemoteRepo, local_repo: TestRepoWithRemote) {
+///```
+pub fn init_repo<'a>(
+    remote_repo: &RemoteRepo,
+    local_repo: TestRepoWithRemote<'a>,
+) -> TestRepoWithRemote<'a> {
     let local_repo = local_repo
         .create_file(
             "File1",
@@ -70,5 +75,5 @@ pub fn init_repo(remote_repo: &RemoteRepo, local_repo: TestRepoWithRemote) {
             .push();
     }
 
-    local_repo.pull_rebase();
+    local_repo.pull_rebase()
 }
