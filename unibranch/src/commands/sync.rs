@@ -1,3 +1,5 @@
+use std::option;
+
 use anyhow::Context;
 use tracing::{debug, info, span, Level};
 
@@ -7,6 +9,8 @@ use crate::git::{local_commit::MainCommit, GitRepo};
 pub struct Options {
     #[arg(short, long)]
     pub cont: bool,
+
+    pub commit_ref: Option<String>,
 }
 
 ///```text
@@ -25,21 +29,32 @@ pub struct Options {
 pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
     debug!("Syncing local changes with remote");
 
-    let unpushed_commits = repo.unpushed_commits()?;
+    let mut unpushed_commits = repo.unpushed_commits()?;
     let mut parent_commit = if options.cont {
         //Read the current state
         //First finish the ongoing merge
+        if options.commit_ref.is_some() {
+            anyhow::bail!("Can not call --continue with a reference");
+        }
         let tracked_commit = repo.finish_merge()?;
 
         //
         tracked_commit.commit()
+    } else if let Some(c_ref) = options.commit_ref {
+        let commit = repo.find_unpushed_commit(&c_ref)?;
+        unpushed_commits = vec![commit];
+        match repo.find_unpushed_commit(&c_ref)? {
+            MainCommit::UnTracked(_) => anyhow::bail!("Commit {} is not tracked so cannot be synced", c_ref),
+            MainCommit::Tracked(c) => c.commit().parent(0)?,
+        }
     } else {
         repo.base_commit()?
     };
+
     info!(
         "Base commit {} {}",
         parent_commit.id(),
-        parent_commit.message().unwrap_or("")
+        parent_commit.summary().unwrap_or("")
     );
     for original_commit in unpushed_commits {
         match original_commit {
@@ -56,7 +71,11 @@ pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
                     .merge_remote_head(Some(&parent_commit))?;
                 //.sync_with_main()?;
 
-                info!("Pushing {} to branch {}", new_parent_1.as_commit().id(), new_parent_1.meta_data().remote_branch_name);
+                info!(
+                    "Pushing {} to branch {}",
+                    new_parent_1.meta_data().remote_commit,
+                    new_parent_1.meta_data().remote_branch_name
+                );
                 repo.remote()
                     .push(new_parent_1.meta_data())
                     .with_context(|| format!("Pushing {}", new_parent_1.meta_data()))?;
