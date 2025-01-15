@@ -1,7 +1,7 @@
 use std::{
     fmt::Display,
     fs::{File, OpenOptions},
-    io::{self, Write},
+    io::Write,
     os::unix::ffi::OsStrExt,
     path::Path,
     process::{Command, Output, Stdio},
@@ -170,25 +170,17 @@ impl<'a> TestRepoWithRemote<'a> {
             .status()
             .unwrap()
             .success());
-        assert!(Command::new("ls")
-            .current_dir(current_dir)
-            .status()
-            .unwrap()
-            .success());
-        let out = Command::new("git")
+        assert!(Command::new("git")
             .current_dir(current_dir)
             .arg("commit")
-            .arg("--author")
-            .arg("Unknown <>")
             .arg("-a")
             .arg("-m")
             .arg(msg)
-            .output().unwrap();
-        io::stdout().write_all(&out.stdout).unwrap();
-        io::stdout().write_all(&out.stderr).unwrap();
-        println!("Hellow {}, {}", out.stdout.len(), out.stderr.len());
-        println!("Stderr: {}", String::from_utf8(out.stderr).unwrap());
-        assert_eq!(out.status.code(), Some(0));
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success());
         self
     }
 
