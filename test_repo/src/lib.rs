@@ -4,7 +4,7 @@ use std::{
     io::{self, Write},
     os::unix::ffi::OsStrExt,
     path::Path,
-    process::{Command, ExitStatus, Output, Stdio},
+    process::{Command, Output, Stdio},
 };
 
 use git2::{Commit, Oid};
@@ -178,6 +178,8 @@ impl<'a> TestRepoWithRemote<'a> {
         let out = Command::new("git")
             .current_dir(current_dir)
             .arg("commit")
+            .arg("--author")
+            .arg("Unknown <>")
             .arg("-a")
             .arg("-m")
             .arg(msg)
