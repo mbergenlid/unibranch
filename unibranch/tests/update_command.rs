@@ -88,7 +88,7 @@ fn test_update_a_diff() {
     assert_eq!(actual_diff, expected_diff);
 
     assert_eq!(
-        repo.find_note("head"),
+        repo.find_note("HEAD"),
         indoc! {"
             remote-branch: commit2
             remote-commit: {}
@@ -200,7 +200,7 @@ fn test_update_a_commit_and_modify_the_commit_message() {
     create::execute(push_options(Some(head)), git_repo(&repo)).unwrap();
 
     assert_eq!(
-        repo.find_note("head"),
+        repo.find_note("HEAD"),
         indoc! {"
             remote-branch: commit2
             remote-commit: {}
@@ -213,7 +213,7 @@ fn test_update_a_commit_and_modify_the_commit_message() {
         .commit_all_amend_with_message("a new message");
 
     assert_eq!(
-        repo.find_note("head"),
+        repo.find_note("HEAD"),
         indoc! {"
             remote-branch: commit2
             remote-commit: {}
@@ -225,7 +225,7 @@ fn test_update_a_commit_and_modify_the_commit_message() {
 
     //Note is still the same
     assert_eq!(
-        repo.find_note("head"),
+        repo.find_note("HEAD"),
         indoc! {"
             remote-branch: commit2
             remote-commit: {}
