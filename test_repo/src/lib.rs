@@ -187,6 +187,7 @@ impl<'a> TestRepoWithRemote<'a> {
         io::stdout().write_all(&out.stdout).unwrap();
         io::stdout().write_all(&out.stderr).unwrap();
         println!("Hellow {}, {}", out.stdout.len(), out.stderr.len());
+        println!("Stderr: {}", String::from_utf8(out.stderr).unwrap());
         assert_eq!(out.status.code(), Some(0));
         self
     }
