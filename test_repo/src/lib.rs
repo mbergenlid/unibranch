@@ -176,8 +176,8 @@ impl<'a> TestRepoWithRemote<'a> {
             .arg("-a")
             .arg("-m")
             .arg(msg)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
             .status()
             .unwrap()
             .success());
