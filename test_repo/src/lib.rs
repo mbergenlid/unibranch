@@ -1,10 +1,10 @@
 use std::{
     fmt::Display,
     fs::{File, OpenOptions},
-    io::Write,
+    io::{self, Write},
     os::unix::ffi::OsStrExt,
     path::Path,
-    process::{Command, Output, Stdio},
+    process::{Command, ExitStatus, Output, Stdio},
 };
 
 use git2::{Commit, Oid};
@@ -170,17 +170,16 @@ impl<'a> TestRepoWithRemote<'a> {
             .status()
             .unwrap()
             .success());
-        assert!(Command::new("git")
+        let out = Command::new("git")
             .current_dir(current_dir)
             .arg("commit")
             .arg("-a")
             .arg("-m")
             .arg(msg)
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status()
-            .unwrap()
-            .success());
+            .output().unwrap();
+        io::stdout().write_all(&out.stdout).unwrap();
+        io::stdout().write_all(&out.stderr).unwrap();
+        assert_eq!(out.status.code(), Some(0));
         self
     }
 
