@@ -65,7 +65,7 @@ fn basic_test() {
         ),
         1,
     );
-    assert_eq!(repo.find_note("head"), expected_note,);
+    assert_eq!(repo.find_note("HEAD"), expected_note,);
 }
 
 #[test]
@@ -118,7 +118,7 @@ fn test_create_from_not_head_commit() {
         ),
         1,
     );
-    assert_eq!(repo.find_note("head^"), expected_note,);
+    assert_eq!(repo.find_note("HEAD^"), expected_note,);
 }
 
 #[test]
