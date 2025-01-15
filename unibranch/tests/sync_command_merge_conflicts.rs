@@ -49,6 +49,7 @@ fn test_merge_conflict_from_remote() {
     let expected_main_commit_id = local_repo.head();
     let expected_main_parent_id = local_repo.find_commit(1).id();
 
+    let local_repo = local_repo.fetch();
     let result = sync::execute(sync::Options::default(), git_repo(&local_repo));
     assert!(result.is_err());
     let expected_error_message = formatdoc! {"
@@ -92,7 +93,7 @@ fn test_merge_conflict_from_remote() {
         );
     }
 
-    sync::execute(sync::Options { cont: true }, git_repo(&local_repo)).expect("Should succeed");
+    sync::execute(sync::Options { cont: true, commit_ref: None }, git_repo(&local_repo)).expect("Should succeed");
 
     local_repo.assert_diff(
         "master^",
@@ -156,6 +157,7 @@ fn test_merge_conflict_in_the_middle_of_sync() {
     let expected_main_commit_id = local_repo.head();
     let expected_main_parent_id = local_repo.find_commit(1).id();
 
+    let local_repo = local_repo.fetch();
     let result = sync::execute(sync::Options::default(), git_repo(&local_repo));
     assert!(result.is_err());
 
@@ -202,7 +204,7 @@ fn test_merge_conflict_in_the_middle_of_sync() {
         );
     }
 
-    sync::execute(sync::Options { cont: true }, git_repo(&local_repo)).expect("Should succeed");
+    sync::execute(sync::Options { cont: true, commit_ref: None }, git_repo(&local_repo)).expect("Should succeed");
 
     local_repo.assert_diff(
         "master^",
@@ -265,6 +267,7 @@ fn test_merge_conflict_in_the_middle_of_sync_2() {
         .create_file("File3", "Another unrelated feature")
         .commit_all("unrelated commit 2");
 
+    let local_repo = local_repo.fetch();
     let result = sync::execute(sync::Options::default(), git_repo(&local_repo));
     assert!(result.is_err());
 
@@ -311,7 +314,7 @@ fn test_merge_conflict_in_the_middle_of_sync_2() {
         );
     }
 
-    sync::execute(sync::Options { cont: true }, git_repo(&local_repo)).expect("Should succeed");
+    sync::execute(sync::Options { cont: true, commit_ref: None }, git_repo(&local_repo)).expect("Should succeed");
 
     local_repo.assert_diff(
         "master^^",

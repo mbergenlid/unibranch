@@ -43,6 +43,7 @@ fn update_commit_from_remote() {
         .commit_all("Fixup")
         .push();
 
+    let local_repo = local_repo.fetch();
     sync::execute(sync::Options::default(), git_repo(&local_repo))
         .expect("Error while running pull command");
     local_repo
@@ -143,6 +144,7 @@ fn update_commit_from_remote_with_local_changes() {
         "Pre update validation"
     );
 
+    let local_repo = local_repo.fetch();
     //Perform the actual update
     sync::execute(sync::Options::default(), git_repo(&local_repo))
         .expect("Unable to perform pull command");
@@ -230,8 +232,9 @@ fn sync_multiple_commits() {
         .append_file("File2", "Remote fixes")
         .commit_all("Fixup")
         .push()
-        .show("HEAD^");
+        .show("HEAD");
 
+    let local_repo = local_repo.fetch();
     sync::execute(sync::Options::default(), git_repo(&local_repo)).unwrap();
 
     let second_pr_diff =
