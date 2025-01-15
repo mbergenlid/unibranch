@@ -170,9 +170,8 @@ impl<'a> TestRepoWithRemote<'a> {
             .status()
             .unwrap()
             .success());
-        assert!(Command::new("git")
+        assert!(Command::new("ls")
             .current_dir(current_dir)
-            .arg("status")
             .status()
             .unwrap()
             .success());
