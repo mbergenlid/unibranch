@@ -4,7 +4,7 @@ use crate::git::{local_commit::MainCommit, GitRepo};
 pub struct Options {
     #[arg(short, long)]
     pub force: bool,
-    pub commit_ref: Option<String>,
+    pub commit_ref: Option<String>  ,
 }
 
 pub fn execute(config: Options, git_repo: GitRepo) -> anyhow::Result<()> {
