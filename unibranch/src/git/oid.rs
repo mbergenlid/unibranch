@@ -81,7 +81,7 @@ mod test {
     #[test]
     fn test_deserialize_invalid_json() {
         let oid_as_string = "52a4d284cd73150a5c62e5e546381db82182032c";
-        let deserialized: Result<Oid, _> = serde_json::from_str(&format!(r#"{}"#, oid_as_string));
+        let deserialized: Result<Oid, _> = serde_json::from_str(&oid_as_string.to_string());
         assert!(deserialized.is_err());
     }
 

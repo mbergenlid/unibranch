@@ -1,5 +1,3 @@
-use std::option;
-
 use anyhow::Context;
 use tracing::{debug, info, span, Level};
 
@@ -44,7 +42,9 @@ pub fn execute(options: Options, repo: GitRepo) -> anyhow::Result<()> {
         let commit = repo.find_unpushed_commit(&c_ref)?;
         unpushed_commits = vec![commit];
         match repo.find_unpushed_commit(&c_ref)? {
-            MainCommit::UnTracked(_) => anyhow::bail!("Commit {} is not tracked so cannot be synced", c_ref),
+            MainCommit::UnTracked(_) => {
+                anyhow::bail!("Commit {} is not tracked so cannot be synced", c_ref)
+            }
             MainCommit::Tracked(c) => c.commit().parent(0)?,
         }
     } else {

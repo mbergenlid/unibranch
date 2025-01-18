@@ -93,7 +93,14 @@ fn test_merge_conflict_from_remote() {
         );
     }
 
-    sync::execute(sync::Options { cont: true, commit_ref: None }, git_repo(&local_repo)).expect("Should succeed");
+    sync::execute(
+        sync::Options {
+            cont: true,
+            commit_ref: None,
+        },
+        git_repo(&local_repo),
+    )
+    .expect("Should succeed");
 
     local_repo.assert_diff(
         "master^",
@@ -204,7 +211,14 @@ fn test_merge_conflict_in_the_middle_of_sync() {
         );
     }
 
-    sync::execute(sync::Options { cont: true, commit_ref: None }, git_repo(&local_repo)).expect("Should succeed");
+    sync::execute(
+        sync::Options {
+            cont: true,
+            commit_ref: None,
+        },
+        git_repo(&local_repo),
+    )
+    .expect("Should succeed");
 
     local_repo.assert_diff(
         "master^",
@@ -314,7 +328,14 @@ fn test_merge_conflict_in_the_middle_of_sync_2() {
         );
     }
 
-    sync::execute(sync::Options { cont: true, commit_ref: None }, git_repo(&local_repo)).expect("Should succeed");
+    sync::execute(
+        sync::Options {
+            cont: true,
+            commit_ref: None,
+        },
+        git_repo(&local_repo),
+    )
+    .expect("Should succeed");
 
     local_repo.assert_diff(
         "master^^",

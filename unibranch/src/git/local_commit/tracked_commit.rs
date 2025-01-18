@@ -3,7 +3,6 @@ use std::fmt::Debug;
 
 use anyhow::Context;
 use anyhow::Ok;
-use git2::DiffFormat;
 use git2::MergeOptions;
 use git2::{Branch, Commit, Oid, Repository};
 use indoc::formatdoc;
@@ -93,7 +92,7 @@ impl<'repo> TrackedCommit<'repo> {
                 self.as_commit(),
                 &origin_main_commit,
                 0,
-                Some(&MergeOptions::default().file_favor(git2::FileFavor::Theirs)),
+                Some(MergeOptions::default().file_favor(git2::FileFavor::Theirs)),
             )
             .context("Cherry picking directly on master")?;
 

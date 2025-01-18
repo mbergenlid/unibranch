@@ -49,7 +49,7 @@ pub fn init_repo(remote_repo: &RemoteRepo, local_repo: TestRepoWithRemote) {
     )
     .unwrap();
 
-    let local_repo = local_repo
+    let _local_repo = local_repo
         .create_file(
             "File1",
             indoc! {"

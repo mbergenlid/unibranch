@@ -63,7 +63,7 @@ pub struct TestRepoWithRemote<'a> {
     local_repo: git2::Repository,
 }
 
-impl<'a> TestRepoWithRemote<'a> {
+impl TestRepoWithRemote<'_> {
     pub fn path(&self) -> &Path {
         (*self.local_repo_dir).as_ref()
     }
@@ -253,7 +253,7 @@ impl<'a> TestRepoWithRemote<'a> {
             .current_dir(current_dir)
             .arg("commit")
             .arg("-a")
-            .arg(&format!("--fixup={}", fixup_commit))
+            .arg(format!("--fixup={}", fixup_commit))
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status()

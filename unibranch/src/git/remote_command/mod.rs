@@ -3,8 +3,6 @@ use std::{
     process::{Command, Stdio},
 };
 
-use anyhow::Context;
-
 use super::local_commit::CommitMetadata;
 
 pub enum RemoteGitCommand<'a> {
@@ -13,7 +11,7 @@ pub enum RemoteGitCommand<'a> {
     DryRun(&'a Path),
 }
 
-impl<'a> RemoteGitCommand<'a> {
+impl RemoteGitCommand<'_> {
     pub fn push(&self, meta_data: &CommitMetadata) -> anyhow::Result<()> {
         match self {
             RemoteGitCommand::Default(path) => {
@@ -22,10 +20,13 @@ impl<'a> RemoteGitCommand<'a> {
             RemoteGitCommand::Silent(path) => {
                 RemoteGitCommand::push_real(path, meta_data, Stdio::null)
             }
-            RemoteGitCommand::DryRun(_) => Ok(println!(
-                "Pushing commit {} to origin/{}",
-                meta_data.remote_commit, meta_data.remote_branch_name
-            )),
+            RemoteGitCommand::DryRun(_) => {
+                println!(
+                    "Pushing commit {} to origin/{}",
+                    meta_data.remote_commit, meta_data.remote_branch_name
+                );
+                Ok(())
+            }
         }
     }
 
@@ -48,27 +49,5 @@ impl<'a> RemoteGitCommand<'a> {
             .stdout(stdio())
             .status()?;
         Ok(())
-    }
-
-    fn fetch_real<F>(path: &Path, stdio: F) -> anyhow::Result<()>
-    where
-        F: Fn() -> Stdio,
-    {
-        Command::new("git")
-            .current_dir(path)
-            .arg("fetch")
-            .stdout(stdio())
-            .stderr(stdio())
-            .status()
-            .context("git fetch")?;
-        Ok(())
-    }
-
-    pub(crate) fn fetch(&self) -> anyhow::Result<()> {
-        match self {
-            RemoteGitCommand::Default(path) => RemoteGitCommand::fetch_real(path, Stdio::inherit),
-            RemoteGitCommand::Silent(path) => RemoteGitCommand::fetch_real(path, Stdio::null),
-            RemoteGitCommand::DryRun(path) => RemoteGitCommand::fetch_real(path, Stdio::inherit),
-        }
     }
 }

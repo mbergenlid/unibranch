@@ -1,4 +1,4 @@
-use test_repo::{RemoteRepo, TestRepoWithRemote};
+use test_repo::TestRepoWithRemote;
 
 use indoc::indoc;
 use ubr::commands::create;

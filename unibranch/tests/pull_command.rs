@@ -227,7 +227,7 @@ fn sync_multiple_commits() {
         .append_file("File1", "Remote fixes")
         .commit_all("Fixup")
         .push();
-    let _another_local_clone = another_local_clone
+    another_local_clone
         .checkout("second-pr")
         .append_file("File2", "Remote fixes")
         .commit_all("Fixup")

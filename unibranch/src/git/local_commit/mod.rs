@@ -72,14 +72,14 @@ pub struct CommitMetadata<'a> {
     pub remote_commit: Oid,
 }
 
-impl<'a> CommitMetadata<'a> {
+impl CommitMetadata<'_> {
     pub fn update_commit(mut self, oid: Oid) -> Self {
         self.remote_commit = oid;
         self
     }
 }
 
-impl<'a> Display for CommitMetadata<'a> {
+impl Display for CommitMetadata<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("remote-branch: {}\n", self.remote_branch_name))?;
         f.write_fmt(format_args!("remote-commit: {}\n", self.remote_commit))?;
