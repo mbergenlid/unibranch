@@ -2,6 +2,10 @@
 name = "ubr"
 version = "0.1.0"
 edition = "2021"
+description = "Unibranch is a wrapper around git to enable a single branch workflow with stacked commits."
+license = "MIT"
+repository = "https://github.com/mbergenlid/unibranch"
+readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
