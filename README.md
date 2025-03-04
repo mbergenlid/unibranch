@@ -23,9 +23,9 @@ $ ubr push
 
 ### Complete example
 
-The idea is to always commit on main branch, so imagine that you have worked on two independent features
+The idea is to create all your commit on one single main branch, so imagine that you have worked on two independent features
 simultanously (Feature 1 and Feature 2). These are commited with one commit per feature straight to your
-main branch, but you would now like to submit these features for review separately.
+main branch, and you would now like to submit these features for review separately.
 
 ```
 
@@ -45,7 +45,7 @@ main branch, but you would now like to submit these features for review separate
  $ ubr create HEAD^
  ```
 
- Creates a *hidden* branch for the parent commit of HEAD, i.e. first feature and pushes it to the remote.
+ Creates a *hidden* branch for the commit `HEAD^` (the parent commit of `HEAD`), i.e. first feature and pushes it to the remote.
  So now your git tree looks like this
 
  ```
@@ -121,7 +121,8 @@ $ ubr sync
 ```
  (local main)  * <- Feature 1
                |
-               |        * <- sync with main commit (essentially a merge)
+               |         * <- sync with main commit
+               |        /  (The result of merging with origin/main)
                |       /
                |      /
                |     * <- fixup!
