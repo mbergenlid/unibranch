@@ -27,10 +27,7 @@ fn update_commit_from_remote() {
 
     //Create a PR from local repo
     create::execute(
-        create::Options {
-            commit_ref: Some("HEAD".to_string()),
-            force: false,
-        },
+        create::Options::default().with_commit_ref("HEAD"),
         git_repo(&local_repo),
     )
     .expect("Unable to create initial PR");
@@ -99,10 +96,7 @@ fn update_commit_from_remote_with_local_changes() {
 
     //Create a PR from local repo
     create::execute(
-        create::Options {
-            commit_ref: Some("HEAD".to_string()),
-            force: false,
-        },
+        create::Options::default().with_commit_ref("HEAD"),
         git_repo(&local_repo),
     )
     .expect("Unable to create initial PR");
@@ -202,20 +196,14 @@ fn sync_multiple_commits() {
 
     //second pr
     create::execute(
-        create::Options {
-            commit_ref: Some("HEAD".to_string()),
-            force: false,
-        },
+        create::Options::default().with_commit_ref("HEAD"),
         git_repo(&local_repo),
     )
     .unwrap();
 
     //first pr
     create::execute(
-        create::Options {
-            commit_ref: Some("HEAD^".to_string()),
-            force: false,
-        },
+        create::Options::default().with_commit_ref("HEAD^"),
         git_repo(&local_repo),
     )
     .unwrap();

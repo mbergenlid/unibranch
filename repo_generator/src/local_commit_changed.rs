@@ -42,14 +42,7 @@ pub fn init_repo(local_repo: TestRepoWithRemote) {
         .commit_all("add more lines");
 
     let git_repo = ubr::git::GitRepo::open(local_repo.path()).unwrap();
-    create::execute(
-        create::Options {
-            force: false,
-            commit_ref: None,
-        },
-        git_repo,
-    )
-    .unwrap();
+    create::execute(create::Options::default(), git_repo).unwrap();
 
     local_repo
         .create_file(

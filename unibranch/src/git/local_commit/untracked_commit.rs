@@ -54,13 +54,14 @@ impl<'repo> UnTrackedCommit<'repo> {
         })
     }
 
-    pub(crate) fn track(self) -> anyhow::Result<TrackedCommit<'repo>> {
+    pub(crate) fn track(self, branch_name: Option<String>) -> anyhow::Result<TrackedCommit<'repo>> {
         let commit_msg = self
             .as_commit()
             .message()
             .context("Commit message is not valid UTF-8")?;
 
-        let branch_name = self.generate_remote_branch_name(commit_msg)?;
+        let branch_name =
+            branch_name.unwrap_or_else(|| self.generate_remote_branch_name(commit_msg));
         let origin_main_commit = self.git_repo.base_commit()?;
         let mut complete_index = self
             .repo
@@ -100,7 +101,7 @@ impl<'repo> UnTrackedCommit<'repo> {
         ))
     }
 
-    fn generate_remote_branch_name(&self, commit_msg: &str) -> anyhow::Result<String> {
+    fn generate_remote_branch_name(&self, commit_msg: &str) -> String {
         let branch_name = {
             let title = commit_msg
                 .lines()
@@ -113,7 +114,7 @@ impl<'repo> UnTrackedCommit<'repo> {
                 )
                 .to_ascii_lowercase()
         };
-        Ok(branch_name)
+        branch_name
     }
 }
 

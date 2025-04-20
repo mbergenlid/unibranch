@@ -23,10 +23,7 @@ fn test_merge_conflict_from_remote() {
 
     //Create a PR from local repo
     create::execute(
-        create::Options {
-            commit_ref: Some("HEAD".to_string()),
-            force: false,
-        },
+        create::Options::default().with_commit_ref("HEAD"),
         git_repo(&local_repo),
     )
     .expect("Unable to create initial PR");
@@ -138,10 +135,7 @@ fn test_merge_conflict_in_the_middle_of_sync() {
 
     //Create a PR from local repo
     create::execute(
-        create::Options {
-            commit_ref: Some("HEAD".to_string()),
-            force: false,
-        },
+        create::Options::default().with_commit_ref("HEAD"),
         git_repo(&local_repo),
     )
     .expect("Unable to create initial PR");
@@ -251,10 +245,7 @@ fn test_merge_conflict_in_the_middle_of_sync_2() {
 
     //Create a PR from local repo
     create::execute(
-        create::Options {
-            commit_ref: Some("HEAD".to_string()),
-            force: false,
-        },
+        create::Options::default().with_commit_ref("HEAD"),
         git_repo(&local_repo),
     )
     .expect("Unable to create initial PR");

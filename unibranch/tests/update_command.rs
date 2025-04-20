@@ -1,4 +1,3 @@
-use git2::Oid;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
 use ubr::{
@@ -10,13 +9,6 @@ use test_repo::{RemoteRepo, TestRepoWithRemote};
 
 fn git_repo(value: &TestRepoWithRemote) -> GitRepo {
     GitRepo::open(value.path()).unwrap()
-}
-
-fn push_options(commit_ref: Option<Oid>) -> create::Options {
-    create::Options {
-        commit_ref: commit_ref.map(|id| format!("{}", id)),
-        force: false,
-    }
 }
 
 #[test]
@@ -34,7 +26,11 @@ fn test_update_a_diff() {
         .commit_all("commit2");
 
     let commit = repo.find_commit(0).id();
-    create::execute(push_options(Some(commit)), git_repo(&repo)).unwrap();
+    create::execute(
+        create::Options::default().with_commit_ref(format!("{}", commit)),
+        git_repo(&repo),
+    )
+    .unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());
@@ -116,7 +112,11 @@ fn test_a_more_complex_update() {
         .commit_all("commit2");
 
     let commit = repo.find_commit(0).id();
-    create::execute(push_options(Some(commit)), git_repo(&repo)).unwrap();
+    create::execute(
+        create::Options::default().with_commit_ref(format!("{}", commit)),
+        git_repo(&repo),
+    )
+    .unwrap();
 
     let remote_head = repo.ls_remote_heads("commit2");
     assert!(!remote_head.stdout.is_empty());
@@ -197,7 +197,11 @@ fn test_update_a_commit_and_modify_the_commit_message() {
         .commit_all("commit2");
 
     let head = repo.find_commit(0).id();
-    create::execute(push_options(Some(head)), git_repo(&repo)).unwrap();
+    create::execute(
+        create::Options::default().with_commit_ref(format!("{}", head)),
+        git_repo(&repo),
+    )
+    .unwrap();
 
     assert_eq!(
         repo.find_note("HEAD"),

@@ -45,14 +45,7 @@ pub fn init_repo<'a>(
         .commit_all("add more lines");
 
     let git_repo = GitRepo::open(local_repo.path()).unwrap();
-    create::execute(
-        create::Options {
-            force: false,
-            commit_ref: None,
-        },
-        git_repo,
-    )
-    .unwrap();
+    create::execute(create::Options::default(), git_repo).unwrap();
 
     let local_repo = local_repo
         .create_file(

@@ -5,6 +5,24 @@ pub struct Options {
     #[arg(short, long)]
     pub force: bool,
     pub commit_ref: Option<String>,
+    #[arg(short, long)]
+    pub name: Option<String>,
+}
+
+impl Options {
+    pub fn with_force(mut self) -> Self {
+        self.force = true;
+        self
+    }
+    pub fn with_name<T: Into<String>>(mut self, name: T) -> Self {
+        self.name.replace(name.into());
+        self
+    }
+
+    pub fn with_commit_ref<T: Into<String>>(mut self, name: T) -> Self {
+        self.commit_ref.replace(name.into());
+        self
+    }
 }
 
 pub fn execute(config: Options, git_repo: GitRepo) -> anyhow::Result<()> {
@@ -22,7 +40,7 @@ pub fn execute(config: Options, git_repo: GitRepo) -> anyhow::Result<()> {
         }
     };
 
-    let tracked_commit = untracked_commit.track()?;
+    let tracked_commit = untracked_commit.track(config.name)?;
     git_repo.remote().push(tracked_commit.meta_data())?;
 
     Ok(())
